@@ -1,13 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { saveHobbyEntry } from "@/lib/hobbies/hobbies";
+import { saveHobbyEntry } from "@/lib/hobbies";
 
 export default function HobbiesPage() {
   const [hobbyName, setHobbyName] = useState("");
   const [frequencyGoal, setFrequencyGoal] = useState("weekly");
   const [notes, setNotes] = useState("");
   const [message, setMessage] = useState("");
+  const [startDate,setStartDate] = useState("");
+  const [endDate,setEndDate] = useState("");
 
   async function handleSave() {
     try {
@@ -17,6 +19,8 @@ export default function HobbiesPage() {
         hobbyName,
         frequencyGoal,
         notes,
+        startDate,
+        endDate,
         createdAt: Date.now(),
       });
 
@@ -57,7 +61,18 @@ export default function HobbiesPage() {
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
       />
-
+      <input
+      type="date"
+      className="border p-2 w-full mb-3"
+      value={startDate}
+      onChange={(e)=>setStartDate(e.target.value)}
+    />
+    <input
+        type="date"
+        className="border p-2 w-full mb-3"
+        value={endDate}
+        onChange={(e)=>setEndDate(e.target.value)}
+    />
       <button
         onClick={handleSave}
         className="bg-black text-white px-4 py-2 rounded"

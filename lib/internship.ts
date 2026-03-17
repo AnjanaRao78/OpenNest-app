@@ -1,5 +1,5 @@
 import { addDoc, collection } from "firebase/firestore";
-import { db } from "../firebase";
+import { db } from "./firebase";
 import { InternshipEntry } from "@/types/internship";
 
 export async function saveInternshipEntry(entry: InternshipEntry) {

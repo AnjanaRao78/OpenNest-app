@@ -39,5 +39,5 @@ node_modules
 .vercel
 
 # typescript
-*.tsbuildinfo
+*.tsbuildinfogc
 next-env.d.ts

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { saveInternshipEntry } from "@/lib/internship/internship";
+import { saveInternshipEntry } from "@/lib/internship";
 
 export default function InternshipPage() {
   const [company, setCompany] = useState("");

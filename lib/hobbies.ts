@@ -1,5 +1,5 @@
 import { addDoc, collection } from "firebase/firestore";
-import { db } from "../firebase";
+import { db } from "./firebase";
 import { HobbyEntry } from "@/types/hobbies";
 
 export async function saveHobbyEntry(entry: HobbyEntry) {
