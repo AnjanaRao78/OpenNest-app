@@ -41,3 +41,7 @@ node_modules
 # typescript
 *.tsbuildinfogc
 next-env.d.ts
+
+/lib/firebase.ts
+/lib/auth.ts
+/app/page.tsx
