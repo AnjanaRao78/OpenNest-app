@@ -1,9 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { User } from "firebase/auth";
+import { subscribeToAuth } from "@/lib/auth";
 import { saveInternshipEntry } from "@/lib/internship";
+import PageHeader from "@/components/PageHeader";
 
 export default function InternshipPage() {
+  const [user, setUser] = useState<User | null>(null);
   const [company, setCompany] = useState("");
   const [statusValue, setStatusValue] = useState("searching");
   const [milestone, setMilestone] = useState("");
@@ -11,11 +15,22 @@ export default function InternshipPage() {
   const [message, setMessage] = useState("");
   const [startDate,setStartDate] = useState("");
   const [endDate,setEndDate] = useState("");
-  async function handleSave() {
+  
+  useEffect(() => {
+    const unsub = subscribeToAuth(setUser);
+    return () => unsub();
+  }, []);
+
+   async function handleSave() {
     try {
+      if (!user) {
+        setMessage("Please sign in first.");
+        return;
+      }
       await saveInternshipEntry({
         familyId: "demo-family-1",
-        authorName: "Anju",
+        authorUid: user.uid,
+        authorName: user.displayName || "Unknown",
         company,
         status: statusValue,
         milestone,
@@ -38,7 +53,7 @@ export default function InternshipPage() {
 
   return (
     <div className="p-6 max-w-xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Internship</h1>
+      <PageHeader title="Internship" />
 
       <input
         className="border p-2 w-full mb-3"

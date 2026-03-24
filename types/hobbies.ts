@@ -1,5 +1,6 @@
 export interface HobbyEntry {
   familyId: string;
+  authorUid: string;
   authorName: string;
   hobbyName: string;
   frequencyGoal: string;

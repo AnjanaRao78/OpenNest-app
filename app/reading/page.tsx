@@ -1,20 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { User } from "firebase/auth";
+import { subscribeToAuth } from "@/lib/auth";
 import { saveReadingEntry } from "@/lib/reading";
+import PageNav from "@/components/PageNav";
+import PageHeader from "@/components/PageHeader";
 
 export default function ReadingPage() {
+  const [user, setUser] = useState<User | null>(null);
   const [title, setTitle] = useState("");
   const [statusValue, setStatusValue] = useState("to-read");
   const [notes, setNotes] = useState("");
   const [message, setMessage] = useState("");
 
+   
+  useEffect(() => {
+    const unsub = subscribeToAuth(setUser);
+    return () => unsub();
+  }, []);
 
-  async function handleSave() {
+    async function handleSave() {
     try {
+      if (!user) {
+        setMessage("Please sign in first.");
+        return;
+      }
       await saveReadingEntry({
         familyId: "demo-family-1",
-        authorName: "Anju",
+        authorUid: user.uid,
+        authorName: user.displayName || "Unknown",
         title,
         status: statusValue,
         notes,
@@ -30,10 +45,10 @@ export default function ReadingPage() {
       setMessage("Failed to save reading entry.");
     }
   }
-
+  
   return (
     <div className="p-6 max-w-xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Reading</h1>
+      <PageHeader title="Reading" />
 
       <input
         className="border p-2 w-full mb-3"
@@ -67,6 +82,9 @@ export default function ReadingPage() {
       </button>
 
       {message && <p className="mt-4">{message}</p>}
+     
     </div>
+    
   );
+
 }

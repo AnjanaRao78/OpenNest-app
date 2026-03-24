@@ -7,8 +7,9 @@ export type VisibilityScope =
 export interface ReflectionPost {
   id?: string;
   familyId: string;
+  authorUid: string;
   authorName: string;
-  authorRole: "parent" | "child";
+  authorRelationship: "parent" | "sibling" | "child";
   mood: string;
   highlight: string;
   challenge: string;

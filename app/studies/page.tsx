@@ -1,10 +1,15 @@
 
 "use client";
 
-import { useState } from "react";
 import { saveStudiesEntry } from "@/lib/studies";
+import { useEffect, useState } from "react";
+import { subscribeToAuth } from "@/lib/auth";
+import { User } from "firebase/auth";
+import PageNav from "@/components/PageNav";
+import PageHeader from "@/components/PageHeader";
 
 export default function StudiesPage() {
+  const [user, setUser] = useState<User | null>(null);
   const [term, setTerm] = useState("");
   const [courseName, setCourseName] = useState("");
   const [workload, setWorkload] = useState("medium");
@@ -13,11 +18,23 @@ export default function StudiesPage() {
   const [startDate,setStartDate] = useState("");
   const [endDate,setEndDate] = useState("");
 
+  useEffect(() => {
+    const unsub = subscribeToAuth(setUser);
+    return () => unsub();
+  }, []);
+
+  
+
   async function handleSave() {
     try {
+      if (!user) {
+        setStatus("Please sign in first.");
+        return;
+      }
       await saveStudiesEntry({
         familyId: "demo-family-1",
-        authorName: "Anju",
+        authorUid: user.uid,
+        authorName: user.displayName || "Unknown",
         term,
         courseName,
         workload,
@@ -41,7 +58,7 @@ export default function StudiesPage() {
 
   return (
     <div className="p-6 max-w-xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Studies</h1>
+      <PageHeader title="Studies" />
 
       <input
         className="border p-2 w-full mb-3"
@@ -94,6 +111,7 @@ export default function StudiesPage() {
 </button>
 
       {status && <p className="mt-4">{status}</p>}
+      
     </div>
   );
 }

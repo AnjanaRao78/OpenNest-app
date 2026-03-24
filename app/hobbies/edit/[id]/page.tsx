@@ -1,12 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { subscribeToAuth } from "@/lib/auth";
+import { useParams, useRouter } from "next/navigation";
 import { User } from "firebase/auth";
+import { subscribeToAuth } from "@/lib/auth";
 import { saveHobbyEntry } from "@/lib/hobbies";
 import PageHeader from "@/components/PageHeader";
 
-export default function HobbiesPage() {
+export default function EditHobbiesPage() {
+
+  const params = useParams();
+  const router = useRouter();
+  const id = params.id as string;
+
   const [user, setUser] = useState<User | null>(null);
   const [hobbyName, setHobbyName] = useState("");
   const [frequencyGoal, setFrequencyGoal] = useState("weekly");
@@ -51,18 +57,15 @@ export default function HobbiesPage() {
   }
 
   return (
-      
+<div className="p-6 max-w-xl mx-auto">
+   <PageHeader title="Hobbies" />
     <div className="p-6 max-w-xl mx-auto">
-      <PageHeader title="Hobbies" />
-       
       <input
         className="border p-2 w-full mb-3"
         placeholder="Hobby name"
         value={hobbyName}
         onChange={(e) => setHobbyName(e.target.value)}
       />
-  
-
       <select
         className="border p-2 w-full mb-3"
         value={frequencyGoal}
@@ -98,10 +101,8 @@ export default function HobbiesPage() {
         Save Hobby Entry
       </button>
 
-      {status && <p className="mt-4">{status}
-      </p>}
-     
+      {status && <p className="mt-4">{status}</p>}
     </div>
-    
+  </div>
   );
 }

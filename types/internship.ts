@@ -1,6 +1,7 @@
 export interface InternshipEntry {
   familyId: string
-  authorName: string
+  authorUid: string
+  authorName: string;
   company: string
   status: string
   milestone: string

@@ -1,5 +1,6 @@
 export interface StudiesEntry {
   familyId: string;
+  authorUid: string;
   authorName: string;
   term: string;
   courseName: string;
