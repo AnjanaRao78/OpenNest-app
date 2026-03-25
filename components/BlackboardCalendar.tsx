@@ -55,7 +55,7 @@ export default function BlackboardCalendar({ year, month, items }: Props) {
           </div>
 
           <div className="text-[10px] sm:text-xs opacity-70 whitespace-nowrap">
-            family chalkboard
+            Open Nest chalkboard
           </div>
         </div>
 
