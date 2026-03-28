@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { User } from "firebase/auth";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { db } from "@/types/firebase1";
 import { subscribeToAuth } from "@/lib/auth";
 import PageHeader from "@/components/PageHeader";
 

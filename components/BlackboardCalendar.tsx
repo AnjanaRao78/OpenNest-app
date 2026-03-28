@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { CalendarItem } from "@/types/calendar";
 import { getAuthorColor } from "@/lib/authorColors";
 import {
@@ -9,12 +8,13 @@ import {
   getDateKindSymbol,
   shortenTitle,
 } from "@/lib/calendarDisplay";
+import BottomSheetDayView from "@/components/BottomSheetDayView";
 
-interface Props {
+type BlackboardCalendarProps = {
   year: number;
-  month: number; // 0-11
+  month: number;
   items: CalendarItem[];
-}
+};
 
 function formatLocalDate(year: number, month: number, day: number): string {
   const mm = String(month + 1).padStart(2, "0");
@@ -22,7 +22,11 @@ function formatLocalDate(year: number, month: number, day: number): string {
   return `${year}-${mm}-${dd}`;
 }
 
-export default function BlackboardCalendar({ year, month, items }: Props) {
+export default function BlackboardCalendar({
+  year,
+  month,
+  items,
+}: BlackboardCalendarProps) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   const firstDay = new Date(year, month, 1);
@@ -44,12 +48,7 @@ export default function BlackboardCalendar({ year, month, items }: Props) {
   }, [items]);
 
   const selectedItems = selectedDate ? byDate.get(selectedDate) || [] : [];
-
   const monthName = firstDay.toLocaleString("default", { month: "long" });
-
-  function closeSheet() {
-    setSelectedDate(null);
-  }
 
   return (
     <div className="min-h-screen bg-[#141414] text-[#f5f0d8] px-2 py-3 sm:px-4 sm:py-4">
@@ -135,70 +134,11 @@ export default function BlackboardCalendar({ year, month, items }: Props) {
         </div>
       </div>
 
-      {selectedDate && (
-        <>
-          <div
-            className="fixed inset-0 bg-black/45 z-40"
-            onClick={closeSheet}
-          />
-
-          <div className="fixed inset-x-0 bottom-0 z-50 max-w-screen-sm mx-auto">
-            <div className="rounded-t-3xl border-t border-x border-[#3a3a3a] bg-[#1b1b1b] text-[#f5f0d8] shadow-2xl max-h-[75vh] flex flex-col">
-              <div className="flex items-center justify-center pt-3">
-                <div className="h-1.5 w-12 rounded-full bg-[#6b6b6b]" />
-              </div>
-
-              <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-[#333]">
-                <div>
-                  <h2 className="text-base font-semibold">Entries</h2>
-                  <p className="text-xs opacity-70">{selectedDate}</p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={closeSheet}
-                  className="text-sm underline"
-                >
-                  Close
-                </button>
-              </div>
-
-              <div className="overflow-y-auto px-4 py-3 space-y-3">
-                {selectedItems.length === 0 && (
-                  <p className="text-sm opacity-70">No entries for this date.</p>
-                )}
-
-                {selectedItems.map((item) => (
-                  <Link
-                    key={item.id}
-                    href={item.href}
-                    onClick={closeSheet}
-                    className={`block rounded-2xl border p-3 transition hover:opacity-95 ${getAuthorColor(
-                      item.authorUid
-                    )}`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="text-sm font-semibold truncate">
-                          {item.title}
-                        </div>
-                        <div className="text-xs opacity-90 mt-1">
-                          {getAuthorInitial(item.authorName)} ·{" "}
-                          {item.authorName} · {getDateKindSymbol(item.dateKind)}
-                        </div>
-                      </div>
-
-                      <div className="text-xs shrink-0 opacity-90 underline">
-                        Open
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </div>
-        </>
-      )}
+      <BottomSheetDayView
+        selectedDate={selectedDate}
+        items={selectedItems}
+        onClose={() => setSelectedDate(null)}
+      />
     </div>
   );
 }

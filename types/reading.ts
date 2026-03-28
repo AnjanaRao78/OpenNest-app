@@ -5,5 +5,6 @@ export interface ReadingEntry {
   title: string;
   status: string;
   notes: string;
+  startDate: string;
   createdAt: number;
 }

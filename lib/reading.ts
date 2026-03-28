@@ -1,5 +1,5 @@
 import { addDoc, collection } from "firebase/firestore";
-import { db } from "./firebase";
+import { db } from "../types/firebase1";
 import { ReadingEntry } from "@/types/reading";
 
 export async function saveReadingEntry(entry: ReadingEntry) {

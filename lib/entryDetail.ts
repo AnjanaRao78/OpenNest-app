@@ -1,5 +1,5 @@
 import { doc, getDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { db } from "@/types/firebase1";
 
 export async function loadEntryById(collectionName: string, id: string) {
   const ref = doc(db, collectionName, id);

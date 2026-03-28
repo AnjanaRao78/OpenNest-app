@@ -8,7 +8,7 @@ import {
   getDoc,
   updateDoc,
 } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { db } from "@/types/firebase1";
 import { ReflectionPost } from "@/types/reflection";
 
 export async function saveReflection(post: ReflectionPost) {

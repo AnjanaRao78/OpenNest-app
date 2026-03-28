@@ -1,11 +1,26 @@
+export type CalendarModuleType =
+  | "reflection"
+  | "studies"
+  | "internship"
+  | "reading";
+
+export type CalendarDateKind = "start" | "middle" | "end" | "single";
+
+export type CalendarViewType = "month" | "agenda" | "schedule";
+
 export interface CalendarItem {
   id: string;
   sourceId: string;
-  type: "studies" | "reading" | "hobbies" | "internship" | "reflection";
+  type: CalendarModuleType;
   title: string;
   date: string;
-  dateKind: "start" | "middle" | "end" | "single";
+  dateKind: CalendarDateKind;
   authorUid: string;
   authorName: string;
   href: string;
+  meta?: string;
+  timeLabel?: string;
+  days?: string[];
+  startTime?: string;
+  endTime?: string;
 }
