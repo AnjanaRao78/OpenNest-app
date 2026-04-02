@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { User } from "firebase/auth";
-import { subscribeToAuth } from "@/lib/auth";
-import { saveReadingEntry } from "@/lib/reading";
+import { getUserProfile, subscribeToAuth } from "@/lib/auth";
+import { saveReadingEntry, loadReadingByAuthor } from "@/lib/reading";
 import { collection, getDocs, query, where } from "firebase/firestore";
-import { db } from "@/types/firebase1";
+import { db } from "@/lib/firebase";
 import PageHeader from "@/components/PageHeader";
 import SummaryCard from "@/components/SummaryCard";
 import DashboardCard from "@/components/DashboardCard";
@@ -13,35 +13,51 @@ import Link from "next/link";
 
 export default function ReadingPage() {
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<any>(null);
+  
   const [entries, setEntries] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<"library" | "dashboard">("dashboard");
+  
 
   const [title, setTitle] = useState("");
   const [statusValue, setStatusValue] = useState("to-read");
   const [notes, setNotes] = useState("");
   const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(true); 
 
-  useEffect(() => {
-    const unsub = subscribeToAuth(async (authUser) => {
-      setUser(authUser);
-      if (!authUser) return;
+useEffect(() => {
+  const unsub = subscribeToAuth(async (authUser) => {
+    setUser(authUser);
+    if (!authUser){
 
-      const q = query(collection(db, "reading"), where("authorUid", "==", authUser.uid));
-      const snap = await getDocs(q);
-      const data = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      setProfile(null);
+      setLoading(false);
+      return;
+    } 
+try { 
+      const userProfile = await getUserProfile(authUser.uid);
+      const data = await loadReadingByAuthor(authUser.uid);
       setEntries(data);
-    });
+      setProfile(userProfile);
+    } catch (error) {
+      console.error("Failed to load user profile:", error);
+    } finally {   
+      setLoading(false);
+    } 
+    
+  });
 
-    return () => unsub();
-  }, []);
+  return () => unsub();
+}, []);
 
-  async function reloadEntries(uid: string) {
-    const q = query(collection(db, "reading"), where("authorUid", "==", uid));
-    const snap = await getDocs(q);
-    const data = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    setEntries(data);
-  }
+ async function reloadEntries(uid: string) {
+  const q = query(collection(db, "reading"), where("authorUid", "==", uid));
+  const snap = await getDocs(q);
+  const data = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  setEntries(data);
+}
 
   async function handleSave() {
     if (!user) {
@@ -49,18 +65,28 @@ export default function ReadingPage() {
       return;
     }
 
+    if (!title.trim()) {
+      setMessage("Please enter a title.");
+      return;
+    }
+
+    if (!startDate) {
+      setMessage("Please choose a start date.");
+      return;
+    }
+
     try {
       await saveReadingEntry({
-        familyId: "demo-family-1",
+        familyId: profile.familyId,
         authorUid: user.uid,
         authorName: user.displayName || "Unknown",
         title,
         status: statusValue,
         notes,
         startDate,
+        endDate,
         createdAt: Date.now(),
       });
-
 
       await reloadEntries(user.uid);
 
@@ -68,6 +94,7 @@ export default function ReadingPage() {
       setStatusValue("to-read");
       setNotes("");
       setStartDate("");
+      setEndDate("");
       setMessage("Reading entry saved.");
     } catch (error) {
       console.error(error);
@@ -127,6 +154,7 @@ export default function ReadingPage() {
                           <div className="module-item-title">{entry.title}</div>
                           <div className="module-item-subtitle">
                             Started: {entry.startDate || "-"}
+                            {entry.endDate ? ` · Ends: ${entry.endDate}` : ""}
                           </div>
                         </div>
                         <Link href={`/entry/reading/${entry.id}`} className="underline text-sm">
@@ -148,7 +176,9 @@ export default function ReadingPage() {
                   queuedReads.map((entry) => (
                     <div key={entry.id} className="module-item">
                       <div className="module-item-title">{entry.title}</div>
-                      <div className="module-item-subtitle">Queued</div>
+                      <div className="module-item-subtitle">
+                        To Read · {entry.startDate || "-"}
+                      </div>
                     </div>
                   ))
                 ) : (
@@ -163,7 +193,9 @@ export default function ReadingPage() {
                   finishedReads.slice(0, 5).map((entry) => (
                     <div key={entry.id} className="module-item">
                       <div className="module-item-title">{entry.title}</div>
-                      <div className="module-item-subtitle">Finished</div>
+                      <div className="module-item-subtitle">
+                        {entry.startDate || "-"} → {entry.endDate || "-"}
+                      </div>
                     </div>
                   ))
                 ) : (
@@ -195,6 +227,12 @@ export default function ReadingPage() {
                   onChange={(e) => setStartDate(e.target.value)}
                 />
 
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
+
                 <textarea
                   placeholder="Notes"
                   value={notes}
@@ -220,7 +258,8 @@ export default function ReadingPage() {
                       <div>
                         <div className="module-item-title">{entry.title}</div>
                         <div className="module-item-subtitle">
-                          {entry.status} {entry.startDate ? `· ${entry.startDate}` : ""}
+                          {entry.status} · {entry.startDate || "-"}
+                          {entry.endDate ? ` → ${entry.endDate}` : ""}
                         </div>
                       </div>
                       <Link href={`/entry/reading/${entry.id}`} className="underline text-sm">

@@ -2,18 +2,19 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { User } from "firebase/auth";
-import { subscribeToAuth } from "@/lib/auth";
 import { saveInternshipEntry, loadInternshipsByAuthor } from "@/lib/internship";
 import PageHeader from "@/components/PageHeader";
 import SummaryCard from "@/components/SummaryCard";
 import DashboardCard from "@/components/DashboardCard";
 import Link from "next/link";
+import { getUserProfile, subscribeToAuth } from "@/lib/auth";
 
 export default function InternshipPage() {
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<any>(null);
   const [entries, setEntries] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<"dashboard" | "board">("dashboard");
-
+  const [loading, setLoading] = useState(true);
   const [company, setCompany] = useState("");
   const [statusValue, setStatusValue] = useState("searching");
   const [milestone, setMilestone] = useState("");
@@ -25,11 +26,23 @@ export default function InternshipPage() {
   useEffect(() => {
     const unsub = subscribeToAuth(async (authUser) => {
       setUser(authUser);
-      if (!authUser) return;
+      if (!authUser) {
 
+      setProfile(null);
+      setLoading(false);
+      return;
+    } 
+    try{
+      const userProfile = await getUserProfile(authUser.uid);
       const data = await loadInternshipsByAuthor(authUser.uid);
       setEntries(data);
-    });
+      setProfile(userProfile);
+    } catch (error) {
+      console.error("Failed to load user profile:", error);
+    }finally {   
+      setLoading(false);
+    } 
+  });
 
     return () => unsub();
   }, []);
@@ -47,7 +60,7 @@ export default function InternshipPage() {
 
     try {
       await saveInternshipEntry({
-        familyId: "demo-family-1",
+        familyId: profile.familyId,
         authorUid: user.uid,
         authorName: user.displayName || "Unknown",
         company,

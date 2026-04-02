@@ -47,10 +47,13 @@ function expandDateRange(
   base: Omit<CalendarItem, "id" | "date" | "dateKind">
 ): CalendarItem[] {
   const items: CalendarItem[] = [];
+
   const start = new Date(`${startDate}T00:00:00`);
   const end = new Date(`${endDate}T00:00:00`);
 
-  if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) return items;
+  if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) {
+    return items;
+  }
 
   const current = new Date(start);
 
@@ -84,10 +87,7 @@ function withinRange(date: string, startDate: string, endDate: string) {
   return date >= startDate && date <= endDate;
 }
 
-function keepItem(
-  item: CalendarItem,
-  filters: CalendarFilterInput
-): boolean {
+function keepItem(item: CalendarItem, filters: CalendarFilterInput): boolean {
   if (!filters.selectedModules.includes(item.type)) return false;
   if (!withinRange(item.date, filters.startDate, filters.endDate)) return false;
 
@@ -128,6 +128,7 @@ export async function loadCalendarItems(
 ): Promise<CalendarItem[]> {
   const items: CalendarItem[] = [];
 
+  // STUDIES
   if (filters.selectedModules.includes("studies")) {
     const studiesQ = query(
       collection(db, "studies"),
@@ -135,8 +136,8 @@ export async function loadCalendarItems(
     );
     const studiesSnap = await getDocs(studiesQ);
 
-    studiesSnap.docs.forEach((doc) => {
-      const d: any = { id: doc.id, ...doc.data() };
+    studiesSnap.docs.forEach((docSnap) => {
+      const d: any = { id: docSnap.id, ...docSnap.data() };
 
       const start = safeDate(d.startDate);
       const end = safeDate(d.endDate || d.startDate);
@@ -185,15 +186,16 @@ export async function loadCalendarItems(
     });
   }
 
+  // INTERNSHIP
   if (filters.selectedModules.includes("internship")) {
-    const internshipsQ = query(
+    const internshipQ = query(
       collection(db, "internship"),
       where("familyId", "==", filters.familyId)
     );
-    const internshipsSnap = await getDocs(internshipsQ);
+    const internshipSnap = await getDocs(internshipQ);
 
-    internshipsSnap.docs.forEach((doc) => {
-      const d: any = { id: doc.id, ...doc.data() };
+    internshipSnap.docs.forEach((docSnap) => {
+      const d: any = { id: docSnap.id, ...docSnap.data() };
 
       const start = safeDate(d.startDate);
       const end = safeDate(d.endDate || d.startDate);
@@ -216,6 +218,7 @@ export async function loadCalendarItems(
     });
   }
 
+  // READING
   if (filters.selectedModules.includes("reading")) {
     const readingQ = query(
       collection(db, "reading"),
@@ -223,28 +226,40 @@ export async function loadCalendarItems(
     );
     const readingSnap = await getDocs(readingQ);
 
-    readingSnap.docs.forEach((doc) => {
-      const d: any = { id: doc.id, ...doc.data() };
-      const singleDate =
-        safeDate(d.startDate) || safeDate(d.createdAt) || formatLocalDate(new Date());
+    readingSnap.docs.forEach((docSnap) => {
+      const d: any = { id: docSnap.id, ...docSnap.data() };
 
-      const item: CalendarItem = {
-        id: `${d.id}-${singleDate}`,
+      const start = safeDate(d.startDate) || safeDate(d.createdAt);
+      if (!start) return;
+
+      let end: string;
+
+      if (d.status === "reading") {
+        end = safeDate(d.endDate) || filters.endDate;
+      } else if (d.status === "finished") {
+        end = safeDate(d.endDate) || start;
+      } else {
+        // to-read and everything else
+        end = start;
+      }
+
+      const expanded = expandDateRange(start, end, {
         sourceId: d.id,
         type: "reading",
         title: d.title || "Reading",
-        date: singleDate,
-        dateKind: "single",
         authorUid: d.authorUid || "",
         authorName: d.authorName || "Unknown",
         href: `/entry/reading/${d.id}`,
         meta: d.status || "",
-      };
+      });
 
-      if (keepItem(item, filters)) items.push(item);
+      expanded.forEach((item) => {
+        if (keepItem(item, filters)) items.push(item);
+      });
     });
   }
 
+  // REFLECTION
   if (filters.selectedModules.includes("reflection")) {
     const reflectionsQ = query(
       collection(db, "reflections"),
@@ -252,8 +267,8 @@ export async function loadCalendarItems(
     );
     const reflectionsSnap = await getDocs(reflectionsQ);
 
-    reflectionsSnap.docs.forEach((doc) => {
-      const d: any = { id: doc.id, ...doc.data() };
+    reflectionsSnap.docs.forEach((docSnap) => {
+      const d: any = { id: docSnap.id, ...docSnap.data() };
 
       const visible = canUserSeeReflection(d, {
         uid: filters.viewerUid,
@@ -285,7 +300,9 @@ export async function loadCalendarItems(
 
   return items.sort((a, b) => {
     if (a.date !== b.date) return a.date.localeCompare(b.date);
-    if (a.authorName !== b.authorName) return a.authorName.localeCompare(b.authorName);
+    if (a.authorName !== b.authorName) {
+      return a.authorName.localeCompare(b.authorName);
+    }
     return a.title.localeCompare(b.title);
   });
 }
