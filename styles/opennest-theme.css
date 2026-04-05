@@ -1,0 +1,421 @@
+:root {
+  --on-bg: #f8f5ee;
+  --on-surface: #fffdf9;
+  --on-surface-2: #f3eee4;
+  --on-text: #24343a;
+  --on-text-soft: #62757b;
+
+  --on-teal: #4a97a5;
+  --on-teal-2: #6fb3be;
+  --on-gold: #d8a33a;
+  --on-gold-2: #e7bd63;
+  --on-sand: #d9c7a2;
+  --on-line: #e7dece;
+
+  --on-success: #e8f5ef;
+  --on-warning: #fff5e4;
+  --on-info: #eaf6f8;
+  --on-danger: #fff0ee;
+
+  --on-shadow: 0 10px 30px rgba(71, 68, 58, 0.08);
+  --on-shadow-soft: 0 4px 14px rgba(71, 68, 58, 0.06);
+
+  --on-radius-xl: 28px;
+  --on-radius-lg: 22px;
+  --on-radius-md: 16px;
+  --on-radius-sm: 12px;
+
+  --on-max-width: 430px;
+}
+
+html,
+body {
+  background: radial-gradient(circle at top, #fcfbf7 0%, var(--on-bg) 52%, #f2ede3 100%);
+  color: var(--on-text);
+}
+
+.opennest-app-shell {
+  width: 100%;
+  max-width: var(--on-max-width);
+  margin: 0 auto;
+  min-height: 100vh;
+  position: relative;
+  background:
+    linear-gradient(rgba(255,255,255,0.72), rgba(255,255,255,0.72)),
+    radial-gradient(circle at top, #fffdf9 0%, #f7f2e8 100%);
+}
+
+.opennest-page {
+  max-width: var(--on-max-width);
+  margin: 0 auto;
+  padding: 16px 16px 96px;
+}
+
+.opennest-logo-wrap {
+  display: flex;
+  justify-content: center;
+  padding-top: 0;
+  padding-bottom: 0px;
+}
+
+.opennest-logo {
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+.opennest-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.opennest-topbar-title {
+  font-size: 28px;
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--on-text);
+}
+
+.opennest-topbar-links {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 14px;
+}
+
+.opennest-topbar-links a {
+  color: var(--on-text-soft);
+  text-decoration: none;
+}
+
+.opennest-topbar-links a:hover,
+.opennest-topbar-links a.active {
+  color: var(--on-teal);
+  font-weight: 600;
+}
+
+.opennest-hero-card,
+.opennest-card {
+  background: rgba(255, 253, 249, 0.96);
+  border: 1px solid var(--on-line);
+  border-radius: var(--on-radius-xl);
+  box-shadow: var(--on-shadow);
+}
+
+.opennest-card {
+  padding: 16px;
+}
+
+.opennest-hero-card {
+  padding: 18px;
+}
+
+.opennest-card-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.opennest-card-subtitle {
+  font-size: 13px;
+  color: var(--on-text-soft);
+}
+
+.opennest-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 16px 0 20px;
+}
+
+.opennest-summary-card {
+  background: rgba(255,255,255,0.92);
+  border: 1px solid var(--on-line);
+  border-radius: 20px;
+  padding: 14px;
+  box-shadow: var(--on-shadow-soft);
+}
+
+.opennest-summary-label {
+  font-size: 12px;
+  color: var(--on-text-soft);
+  margin-bottom: 6px;
+}
+
+.opennest-summary-value {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.opennest-tabs {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  margin-bottom: 18px;
+}
+
+.opennest-tab {
+  border: 1px solid var(--on-line);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.9);
+  color: var(--on-text);
+  padding: 10px 16px;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.opennest-tab.active {
+  background: linear-gradient(135deg, var(--on-teal), var(--on-gold));
+  color: white;
+  border-color: transparent;
+}
+
+.opennest-section {
+  display: grid;
+  gap: 16px;
+}
+
+.opennest-list {
+  display: grid;
+  gap: 12px;
+}
+
+.opennest-list-card {
+  background: rgba(255,255,255,0.92);
+  border: 1.5px solid var(--on-line);
+  border-radius: 20px;
+  padding: 14px;
+  box-shadow: var(--on-shadow-soft);
+}
+
+.opennest-list-card.teal {
+  border-color: rgba(74, 151, 165, 0.45);
+}
+
+.opennest-list-card.gold {
+  border-color: rgba(216, 163, 58, 0.45);
+}
+
+.opennest-list-title {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.opennest-list-meta {
+  font-size: 13px;
+  color: var(--on-text-soft);
+  margin-top: 4px;
+}
+
+.opennest-meta-grid {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+.opennest-form {
+  display: grid;
+  gap: 12px;
+}
+
+.opennest-form input,
+.opennest-form textarea,
+.opennest-form select {
+  width: 100%;
+  border: 1px solid var(--on-line);
+  background: rgba(255,255,255,0.96);
+  border-radius: 16px;
+  padding: 12px 14px;
+  color: var(--on-text);
+  font-size: 15px;
+  outline: none;
+}
+
+.opennest-form textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.opennest-form-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.opennest-button {
+  border: none;
+  border-radius: 18px;
+  padding: 12px 16px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.opennest-button-primary {
+  background: linear-gradient(135deg, var(--on-teal), var(--on-gold));
+  color: white;
+  box-shadow: var(--on-shadow-soft);
+}
+
+.opennest-button-secondary {
+  background: rgba(255,255,255,0.96);
+  color: var(--on-text);
+  border: 1px solid var(--on-line);
+}
+
+.opennest-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.opennest-pill {
+  padding: 7px 11px;
+  border-radius: 999px;
+  font-size: 12px;
+  border: 1px solid var(--on-line);
+  background: white;
+}
+
+.opennest-pill.teal {
+  background: var(--on-info);
+  color: #2b6975;
+  border-color: rgba(74,151,165,0.25);
+}
+
+.opennest-pill.gold {
+  background: var(--on-warning);
+  color: #8a6412;
+  border-color: rgba(216,163,58,0.25);
+}
+
+.opennest-module-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.opennest-detail-card,
+.opennest-edit-card {
+  background: rgba(255,253,249,0.96);
+  border: 1px solid var(--on-line);
+  border-radius: 24px;
+  padding: 18px;
+  box-shadow: var(--on-shadow);
+}
+
+.opennest-bottom-nav {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 10px;
+  width: calc(100% - 20px);
+  max-width: calc(var(--on-max-width) - 20px);
+  background: rgba(255,253,249,0.96);
+  border: 1px solid var(--on-line);
+  border-radius: 24px;
+  box-shadow: var(--on-shadow);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  padding: 8px 6px;
+  backdrop-filter: blur(10px);
+}
+
+.opennest-bottom-nav a {
+  text-decoration: none;
+  color: var(--on-text-soft);
+  font-size: 12px;
+  text-align: center;
+  padding: 6px 4px;
+}
+
+.opennest-bottom-nav a.active {
+  color: var(--on-teal);
+  font-weight: 700;
+}
+
+.opennest-module-accent-studies { border-left: 4px solid var(--on-teal); }
+.opennest-module-accent-reading { border-left: 4px solid var(--on-gold); }
+.opennest-module-accent-hobbies { border-left: 4px solid #d78463; }
+.opennest-module-accent-internship { border-left: 4px solid #7f9b66; }
+.opennest-module-accent-reflection { border-left: 4px solid #70aab3; }
+
+.opennest-empty-state {
+  text-align: center;
+  color: var(--on-text-soft);
+  padding: 24px 16px;
+}
+
+@media (min-width: 768px) {
+  .opennest-page {
+    max-width: 1100px;
+    padding: 20px 20px 110px;
+  }
+
+  .opennest-app-shell {
+    max-width: 1100px;
+    border-left: 1px solid rgba(231,222,206,0.65);
+    border-right: 1px solid rgba(231,222,206,0.65);
+  }
+
+  .opennest-summary-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .opennest-module-grid {
+    grid-template-columns: 1.1fr 0.9fr;
+  }
+
+  .opennest-bottom-nav {
+    max-width: 540px;
+  }
+}
+
+/* === OpenNest Header === */
+.opennest-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 0px 16px;
+
+  /* soft warm gradient inspired by your logo */
+  background: linear-gradient(135deg, #F6F5F0 0%, #EFEEE9 100%);
+
+  border-bottom: 1px solid #e0d6c2;
+}
+
+.opennest-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.opennest-logo {
+  width: 36px;
+  height: 36px;
+  object-fit:contain;
+}
+
+.opennest-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #24343a;
+  letter-spacing: 0.2px;
+}
+
+.opennest-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* subtle elevation */
+.opennest-header {
+  box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+}

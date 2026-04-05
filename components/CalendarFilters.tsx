@@ -1,23 +1,10 @@
 "use client";
 
-import { CalendarModuleType, CalendarViewType } from "@/types/calendar";
-
-type UserOption = {
-  uid: string;
-  displayName: string;
-  relationship?: string;
-};
-
-interface Props {
-  userOptions: UserOption[];
-  selectedUserUid: string | "all";
-  onUserChange: (value: string | "all") => void;
-  selectedModules: CalendarModuleType[];
-  onToggleModule: (module: CalendarModuleType) => void;
-  selectedView: CalendarViewType;
-  onViewChange: (view: CalendarViewType) => void;
-  currentOffset: number;
-}
+import {
+  CalendarModuleType,
+  CalendarUserOption,
+  CalendarViewType,
+} from "@/types/calendar";
 
 const allModules: CalendarModuleType[] = [
   "reflection",
@@ -35,7 +22,16 @@ export default function CalendarFilters({
   selectedView,
   onViewChange,
   currentOffset,
-}: Props) {
+}: {
+  userOptions: CalendarUserOption[];
+  selectedUserUid: string | "all";
+  onUserChange: (value: string | "all") => void;
+  selectedModules: CalendarModuleType[];
+  onToggleModule: (module: CalendarModuleType) => void;
+  selectedView: CalendarViewType;
+  onViewChange: (view: CalendarViewType) => void;
+  currentOffset: number;
+}) {
   return (
     <div className="max-w-screen-sm mx-auto px-3 pb-3">
       <div className="rounded-2xl border bg-white p-4 shadow-sm space-y-4">

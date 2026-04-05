@@ -1,20 +1,26 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { User } from "firebase/auth";
-import { saveInternshipEntry, loadInternshipsByAuthor } from "@/lib/internship";
+import { subscribeToAuth, getUserProfile } from "@/lib/auth";
+import {
+  loadInternshipsByAuthor,
+  saveInternshipEntry,
+} from "@/lib/internship";
 import PageHeader from "@/components/PageHeader";
 import SummaryCard from "@/components/SummaryCard";
 import DashboardCard from "@/components/DashboardCard";
-import Link from "next/link";
-import { getUserProfile, subscribeToAuth } from "@/lib/auth";
+import BottomNav from "@/components/BottomNav";
 
 export default function InternshipPage() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<any>(null);
   const [entries, setEntries] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "board">("dashboard");
-  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"dashboard" | "board">(
+    "dashboard"
+  );
+
   const [company, setCompany] = useState("");
   const [statusValue, setStatusValue] = useState("searching");
   const [milestone, setMilestone] = useState("");
@@ -26,23 +32,15 @@ export default function InternshipPage() {
   useEffect(() => {
     const unsub = subscribeToAuth(async (authUser) => {
       setUser(authUser);
-      if (!authUser) {
 
-      setProfile(null);
-      setLoading(false);
-      return;
-    } 
-    try{
+      if (!authUser) return;
+
       const userProfile = await getUserProfile(authUser.uid);
+      setProfile(userProfile);
+
       const data = await loadInternshipsByAuthor(authUser.uid);
       setEntries(data);
-      setProfile(userProfile);
-    } catch (error) {
-      console.error("Failed to load user profile:", error);
-    }finally {   
-      setLoading(false);
-    } 
-  });
+    });
 
     return () => unsub();
   }, []);
@@ -53,8 +51,13 @@ export default function InternshipPage() {
   }
 
   async function handleSave() {
-    if (!user) {
-      setMessage("Please sign in first.");
+    if (!user || !profile) {
+      setMessage("Please complete login setup first.");
+      return;
+    }
+
+    if (!company.trim()) {
+      setMessage("Please enter a company.");
       return;
     }
 
@@ -88,190 +91,235 @@ export default function InternshipPage() {
   }
 
   const activeInternships = useMemo(
-    () => entries.filter((e) => e.status === "active"),
+    () => entries.filter((entry) => entry.status === "active"),
     [entries]
   );
 
   const interviewingEntries = useMemo(
-    () => entries.filter((e) => e.status === "interviewing"),
+    () => entries.filter((entry) => entry.status === "interviewing"),
     [entries]
   );
 
   const offeredEntries = useMemo(
-    () => entries.filter((e) => e.status === "offered"),
-    [entries]
-  );
-
-  const searchingEntries = useMemo(
-    () => entries.filter((e) => e.status === "searching"),
+    () => entries.filter((entry) => entry.status === "offered"),
     [entries]
   );
 
   const uniqueCompanies = useMemo(
-    () => Array.from(new Set(entries.map((e) => e.company).filter(Boolean))),
+    () => Array.from(new Set(entries.map((entry) => entry.company).filter(Boolean))),
     [entries]
   );
 
   return (
-    <div>
-      <PageHeader title="Internship" />
+    <div className="opennest-app-shell">
+      <div className="opennest-page">
+        <PageHeader title="Internship" />
 
-      <div className="module-page">
-        <div className="module-summary-grid">
+        <div className="opennest-hero-card">
+          <div className="opennest-card-title">Your career tracker</div>
+          <div className="opennest-card-subtitle">
+            Keep your internship pipeline, active roles, milestones, blockers,
+            and company timeline in one clear place.
+          </div>
+        </div>
+
+        <div className="opennest-summary-grid">
           <SummaryCard label="Active" value={activeInternships.length} />
           <SummaryCard label="Interviewing" value={interviewingEntries.length} />
-          <SummaryCard label="Offers / Active" value={offeredEntries.length + activeInternships.length} />
+          <SummaryCard label="Offers" value={offeredEntries.length} />
           <SummaryCard label="Companies Tracked" value={uniqueCompanies.length} />
         </div>
 
-        <div className="module-tabs">
+        <div className="opennest-tabs">
           <button
-            className={`module-tab ${activeTab === "dashboard" ? "active" : ""}`}
+            type="button"
+            className={`opennest-tab ${activeTab === "dashboard" ? "active" : ""}`}
             onClick={() => setActiveTab("dashboard")}
           >
             Dashboard
           </button>
           <button
-            className={`module-tab ${activeTab === "board" ? "active" : ""}`}
+            type="button"
+            className={`opennest-tab ${activeTab === "board" ? "active" : ""}`}
             onClick={() => setActiveTab("board")}
           >
             Internship Board
           </button>
         </div>
 
-        {activeTab === "dashboard" ? (
-          <div className="module-grid-2">
-            <DashboardCard title="Current / Active Internships">
-              <div className="module-list">
-                {activeInternships.length > 0 ? (
-                  activeInternships.map((entry) => (
-                    <div key={entry.id} className="module-item">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <div className="module-item-title">{entry.company}</div>
-                          <div className="module-item-subtitle">
-                            {entry.startDate || "-"} → {entry.endDate || "Ongoing"}
+        {activeTab === "dashboard" && (
+          <div className="opennest-module-grid">
+            <div className="opennest-section">
+              <DashboardCard
+                title="Current / Active Internships"
+                accentClass="opennest-module-accent-internship"
+              >
+                <div className="opennest-list">
+                  {activeInternships.length > 0 ? (
+                    activeInternships.map((entry) => (
+                      <div key={entry.id} className="opennest-list-card">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="opennest-list-title">
+                              {entry.company}
+                            </div>
+                            <div className="opennest-list-meta">
+                              {entry.startDate || "-"} → {entry.endDate || "Ongoing"}
+                            </div>
+                          </div>
+
+                          <Link
+                            href={`/entry/internship/${entry.id}`}
+                            className="underline text-sm"
+                          >
+                            Open
+                          </Link>
+                        </div>
+
+                        <div className="opennest-meta-grid">
+                          <div>
+                            <strong>Status:</strong> {entry.status || "-"}
+                          </div>
+                          <div>
+                            <strong>Milestone:</strong> {entry.milestone || "-"}
+                          </div>
+                          <div>
+                            <strong>Blocker:</strong> {entry.blocker || "-"}
                           </div>
                         </div>
-                        <Link
-                          href={`/entry/internship/${entry.id}`}
-                          className="underline text-sm"
-                        >
-                          Open
-                        </Link>
                       </div>
-
-                      <div className="module-meta">
-                        <p><strong>Status:</strong> {entry.status}</p>
-                        <p><strong>Milestone:</strong> {entry.milestone || "-"}</p>
-                        <p><strong>Blocker:</strong> {entry.blocker || "-"}</p>
-                      </div>
+                    ))
+                  ) : (
+                    <div className="opennest-empty-state">
+                      No active internships yet.
                     </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-gray-500">No active internships yet.</p>
-                )}
-              </div>
-            </DashboardCard>
+                  )}
+                </div>
+              </DashboardCard>
 
-            <DashboardCard title="Internship Pipeline">
-              <div className="module-list">
-                {entries.length > 0 ? (
-                  entries.map((entry) => (
-                    <div key={entry.id} className="module-item">
-                      <div className="module-item-title">{entry.company}</div>
-                      <div className="module-item-subtitle">
-                        {entry.status} · {entry.startDate || "-"} → {entry.endDate || "-"}
+              <DashboardCard title="Internship Pipeline">
+                <div className="opennest-list">
+                  {entries.length > 0 ? (
+                    entries.map((entry) => (
+                      <div key={entry.id} className="opennest-list-card">
+                        <div className="opennest-list-title">{entry.company}</div>
+                        <div className="opennest-list-meta">
+                          {entry.status} · {entry.startDate || "-"} →{" "}
+                          {entry.endDate || "-"}
+                        </div>
                       </div>
+                    ))
+                  ) : (
+                    <div className="opennest-empty-state">
+                      No pipeline entries yet.
                     </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-gray-500">No pipeline entries yet.</p>
-                )}
-              </div>
-            </DashboardCard>
+                  )}
+                </div>
+              </DashboardCard>
 
-            <DashboardCard title="Milestones & Blockers">
-              <div className="module-list">
-                {entries.length > 0 ? (
-                  entries.map((entry) => (
-                    <div key={entry.id} className="module-item">
-                      <div className="module-item-title">{entry.company}</div>
-                      <div className="module-meta">
-                        <p><strong>Milestone:</strong> {entry.milestone || "-"}</p>
-                        <p><strong>Blocker:</strong> {entry.blocker || "-"}</p>
+              <DashboardCard title="Milestones & Blockers">
+                <div className="opennest-list">
+                  {entries.length > 0 ? (
+                    entries.map((entry) => (
+                      <div key={entry.id} className="opennest-list-card">
+                        <div className="opennest-list-title">{entry.company}</div>
+                        <div className="opennest-meta-grid">
+                          <div>
+                            <strong>Milestone:</strong> {entry.milestone || "-"}
+                          </div>
+                          <div>
+                            <strong>Blocker:</strong> {entry.blocker || "-"}
+                          </div>
+                        </div>
                       </div>
+                    ))
+                  ) : (
+                    <div className="opennest-empty-state">
+                      No milestone data yet.
                     </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-gray-500">No milestone data yet.</p>
-                )}
-              </div>
-            </DashboardCard>
+                  )}
+                </div>
+              </DashboardCard>
+            </div>
 
-            <DashboardCard title="Add Internship Entry">
-              <div className="module-form">
-                <input
-                  placeholder="Company"
-                  value={company}
-                  onChange={(e) => setCompany(e.target.value)}
-                />
+            <div className="opennest-section">
+              <DashboardCard
+                title="Add Internship Entry"
+                accentClass="opennest-module-accent-internship"
+              >
+                <div className="opennest-form">
+                  <input
+                    placeholder="Company"
+                    value={company}
+                    onChange={(e) => setCompany(e.target.value)}
+                  />
 
-                <select
-                  value={statusValue}
-                  onChange={(e) => setStatusValue(e.target.value)}
-                >
-                  <option value="searching">Searching</option>
-                  <option value="interviewing">Interviewing</option>
-                  <option value="offered">Offered</option>
-                  <option value="active">Active</option>
-                </select>
+                  <select
+                    value={statusValue}
+                    onChange={(e) => setStatusValue(e.target.value)}
+                  >
+                    <option value="searching">Searching</option>
+                    <option value="interviewing">Interviewing</option>
+                    <option value="offered">Offered</option>
+                    <option value="active">Active</option>
+                  </select>
 
-                <textarea
-                  placeholder="Milestone"
-                  value={milestone}
-                  onChange={(e) => setMilestone(e.target.value)}
-                />
+                  <textarea
+                    placeholder="Milestone"
+                    value={milestone}
+                    onChange={(e) => setMilestone(e.target.value)}
+                  />
 
-                <textarea
-                  placeholder="Blocker"
-                  value={blocker}
-                  onChange={(e) => setBlocker(e.target.value)}
-                />
+                  <textarea
+                    placeholder="Blocker"
+                    value={blocker}
+                    onChange={(e) => setBlocker(e.target.value)}
+                  />
 
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                />
+                  <div className="opennest-form-row-2">
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                    />
 
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                />
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                    />
+                  </div>
 
-                <button onClick={handleSave} className="module-button-primary">
-                  Save Internship
-                </button>
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    className="opennest-button opennest-button-primary"
+                  >
+                    Save Internship
+                  </button>
 
-                {message && <p className="mt-3 text-sm">{message}</p>}
-              </div>
-            </DashboardCard>
+                  {message && <div className="opennest-list-meta">{message}</div>}
+                </div>
+              </DashboardCard>
+            </div>
           </div>
-        ) : (
-          <div className="module-card">
-            <h2 className="module-section-title">Internship Board</h2>
+        )}
 
-            <div className="module-list">
+        {activeTab === "board" && (
+          <DashboardCard
+            title="Internship Board"
+            accentClass="opennest-module-accent-internship"
+          >
+            <div className="opennest-list">
               {entries.length > 0 ? (
                 entries.map((entry) => (
-                  <div key={entry.id} className="module-item">
+                  <div key={entry.id} className="opennest-list-card">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <div className="module-item-title">{entry.company}</div>
-                        <div className="module-item-subtitle">
-                          {entry.status} · {entry.startDate || "-"} → {entry.endDate || "Ongoing"}
+                        <div className="opennest-list-title">{entry.company}</div>
+                        <div className="opennest-list-meta">
+                          {entry.status} · {entry.startDate || "-"} →{" "}
+                          {entry.endDate || "Ongoing"}
                         </div>
                       </div>
 
@@ -283,19 +331,27 @@ export default function InternshipPage() {
                       </Link>
                     </div>
 
-                    <div className="module-meta">
-                      <p><strong>Milestone:</strong> {entry.milestone || "-"}</p>
-                      <p><strong>Blocker:</strong> {entry.blocker || "-"}</p>
+                    <div className="opennest-meta-grid">
+                      <div>
+                        <strong>Milestone:</strong> {entry.milestone || "-"}
+                      </div>
+                      <div>
+                        <strong>Blocker:</strong> {entry.blocker || "-"}
+                      </div>
                     </div>
                   </div>
                 ))
               ) : (
-                <p className="text-sm text-gray-500">No internship entries yet.</p>
+                <div className="opennest-empty-state">
+                  No internship entries yet.
+                </div>
               )}
             </div>
-          </div>
+          </DashboardCard>
         )}
       </div>
+
+      <BottomNav />
     </div>
   );
 }

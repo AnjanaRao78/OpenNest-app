@@ -5,15 +5,12 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { User } from "firebase/auth";
 import { subscribeToAuth, getUserProfile } from "@/lib/auth";
-import {
-  loadCalendarItems,
-  loadFamilyUsers,
-  CalendarFilterInput,
-} from "@/lib/calendar";
+import { loadCalendarItems, loadFamilyUsers } from "@/lib/calendar";
 import {
   CalendarItem,
   CalendarModuleType,
   CalendarViewType,
+  CalendarFilterInput,
 } from "@/types/calendar";
 import BlackboardCalendar from "@/components/BlackboardCalendar";
 import CalendarFilters from "@/components/CalendarFilters";

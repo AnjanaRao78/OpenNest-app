@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { User } from "firebase/auth";
 import { subscribeToAuth, getUserProfile } from "@/lib/auth";
-import { saveStudiesEntry, loadStudiesByAuthor } from "@/lib/studies";
+import { loadStudiesByAuthor, saveStudiesEntry } from "@/lib/studies";
 import PageHeader from "@/components/PageHeader";
-import Link from "next/link";
-import StudiesCalendarDashboard from "@/components/StudiesCalendarDashboard"; 
+import SummaryCard from "@/components/SummaryCard";
+import DashboardCard from "@/components/DashboardCard";
+import BottomNav from "@/components/BottomNav";
 
 const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -14,7 +16,9 @@ export default function StudiesPage() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<any>(null);
   const [courses, setCourses] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<"courses" | "calendar">("courses");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "courses" | "calendar">(
+    "dashboard"
+  );
 
   const [term, setTerm] = useState("");
   const [courseName, setCourseName] = useState("");
@@ -45,6 +49,11 @@ export default function StudiesPage() {
 
     return () => unsub();
   }, []);
+
+  async function reloadCourses(uid: string) {
+    const studyData = await loadStudiesByAuthor(uid);
+    setCourses(studyData);
+  }
 
   function toggleDay(day: string) {
     setDays((prev) =>
@@ -90,8 +99,7 @@ export default function StudiesPage() {
         createdAt: Date.now(),
       });
 
-      const studyData = await loadStudiesByAuthor(user.uid);
-      setCourses(studyData);
+      await reloadCourses(user.uid);
 
       setTerm("");
       setCourseName("");
@@ -113,238 +121,374 @@ export default function StudiesPage() {
 
   const currentTerm = courses[0]?.term || "-";
 
-  return (
-    <div>
-      <PageHeader title="Studies" />
+  const uniqueDays = useMemo(() => {
+    return Array.from(new Set(courses.flatMap((c) => c.days || [])));
+  }, [courses]);
 
-      <div className="max-w-5xl mx-auto px-4 py-6">
-        {/* Summary */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <div className="rounded-2xl border bg-white p-4 shadow-sm">
-            <div className="text-xs text-gray-500">Current Term</div>
-            <div className="font-semibold mt-1">{currentTerm}</div>
-          </div>
-          <div className="rounded-2xl border bg-white p-4 shadow-sm">
-            <div className="text-xs text-gray-500">Courses</div>
-            <div className="font-semibold mt-1">{courses.length}</div>
-          </div>
-          <div className="rounded-2xl border bg-white p-4 shadow-sm">
-            <div className="text-xs text-gray-500">Class Days</div>
-            <div className="font-semibold mt-1">
-              {Array.from(new Set(courses.flatMap((c) => c.days || []))).join(", ") || "-"}
-            </div>
-          </div>
-          <div className="rounded-2xl border bg-white p-4 shadow-sm">
-            <div className="text-xs text-gray-500">Vacation Days</div>
-            <div className="font-semibold mt-1">
-              {courses.reduce(
-                (sum, c) => sum + ((c.vacationDays || []).length ?? 0),
-                0
-              )}
-            </div>
+  const totalVacationDays = useMemo(() => {
+    return courses.reduce(
+      (sum, course) => sum + ((course.vacationDays || []).length ?? 0),
+      0
+    );
+  }, [courses]);
+
+  const groupedByDay = useMemo(() => {
+    return weekDays.map((day) => ({
+      day,
+      courses: courses.filter((course) => (course.days || []).includes(day)),
+    }));
+  }, [courses]);
+
+  return (
+    <div className="opennest-app-shell">
+      <div className="opennest-page">
+        <PageHeader title="Studies" />
+
+        <div className="opennest-hero-card">
+          <div className="opennest-card-title">Your academic planner</div>
+          <div className="opennest-card-subtitle">
+            Keep courses, class times, rooms, term dates, and vacation days in one
+            shared place that feels orderly without feeling cold.
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-3 mb-6">
+        <div className="opennest-summary-grid">
+          <SummaryCard label="Current Term" value={currentTerm} />
+          <SummaryCard label="Courses" value={courses.length} />
+          <SummaryCard
+            label="Class Days"
+            value={uniqueDays.length > 0 ? uniqueDays.join(", ") : "-"}
+          />
+          <SummaryCard label="Vacation Days" value={totalVacationDays} />
+        </div>
+
+        <div className="opennest-tabs">
           <button
+            type="button"
+            className={`opennest-tab ${activeTab === "dashboard" ? "active" : ""}`}
+            onClick={() => setActiveTab("dashboard")}
+          >
+            Dashboard
+          </button>
+          <button
+            type="button"
+            className={`opennest-tab ${activeTab === "courses" ? "active" : ""}`}
             onClick={() => setActiveTab("courses")}
-            className={`px-4 py-2 rounded-xl border ${
-              activeTab === "courses" ? "bg-black text-white" : "bg-white"
-            }`}
           >
             Courses
           </button>
           <button
+            type="button"
+            className={`opennest-tab ${activeTab === "calendar" ? "active" : ""}`}
             onClick={() => setActiveTab("calendar")}
-            className={`px-4 py-2 rounded-xl border ${
-              activeTab === "calendar" ? "bg-black text-white" : "bg-white"
-            }`}
           >
             Calendar
           </button>
         </div>
 
-        {activeTab === "courses" ? (
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* Form */}
-            <div className="rounded-2xl border bg-white p-5 shadow-sm">
-              <h2 className="text-lg font-semibold mb-4">Add Course</h2>
-
-              <input
-                className="border p-2 w-full mb-3 rounded"
-                placeholder="Term (e.g. Spring 2026)"
-                value={term}
-                onChange={(e) => setTerm(e.target.value)}
-              />
-
-              <input
-                className="border p-2 w-full mb-3 rounded"
-                placeholder="Course Name"
-                value={courseName}
-                onChange={(e) => setCourseName(e.target.value)}
-              />
-
-              <input
-                className="border p-2 w-full mb-3 rounded"
-                placeholder="Course Code"
-                value={courseCode}
-                onChange={(e) => setCourseCode(e.target.value)}
-              />
-
-              <div className="mb-3">
-                <div className="text-sm font-medium mb-2">Days</div>
-                <div className="flex flex-wrap gap-2">
-                  {weekDays.map((day) => (
-                    <button
-                      type="button"
-                      key={day}
-                      onClick={() => toggleDay(day)}
-                      className={`px-3 py-1 rounded-full border text-sm ${
-                        days.includes(day)
-                          ? "bg-black text-white"
-                          : "bg-white text-black"
-                      }`}
-                    >
-                      {day}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <input
-                className="border p-2 w-full mb-3 rounded"
-                placeholder="Classroom"
-                value={classroom}
-                onChange={(e) => setClassroom(e.target.value)}
-              />
-
-              <div className="grid grid-cols-2 gap-3 mb-3">
-                <input
-                  type="time"
-                  className="border p-2 w-full rounded"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                />
-                <input
-                  type="time"
-                  className="border p-2 w-full rounded"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 mb-3">
-                <input
-                  type="date"
-                  className="border p-2 w-full rounded"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                />
-                <input
-                  type="date"
-                  className="border p-2 w-full rounded"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                />
-              </div>
-
-              <div className="mb-3">
-                <div className="text-sm font-medium mb-2">Vacation Days</div>
-                <div className="flex gap-2 mb-2">
-                  <input
-                    type="date"
-                    className="border p-2 rounded flex-1"
-                    value={vacationInput}
-                    onChange={(e) => setVacationInput(e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    onClick={addVacationDay}
-                    className="px-3 py-2 rounded bg-black text-white"
-                  >
-                    Add
-                  </button>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  {vacationDays.map((day) => (
-                    <span
-                      key={day}
-                      className="px-2 py-1 rounded-full text-xs bg-amber-100 border"
-                    >
-                      {day}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <textarea
-                className="border p-2 w-full mb-3 rounded"
-                placeholder="Notes"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-              />
-
-              <button
-                onClick={handleSave}
-                className="bg-black text-white px-4 py-2 rounded-xl"
+        {activeTab === "dashboard" && (
+          <div className="opennest-module-grid">
+            <div className="opennest-section">
+              <DashboardCard
+                title="Weekly Class Schedule"
+                accentClass="opennest-module-accent-studies"
               >
-                Save Course
-              </button>
+                <div className="opennest-list">
+                  {groupedByDay.map(({ day, courses }) => (
+                    <div key={day} className="opennest-list-card teal">
+                      <div className="opennest-list-title">{day}</div>
 
-              {message && <p className="mt-3 text-sm">{message}</p>}
+                      {courses.length === 0 ? (
+                        <div className="opennest-list-meta">No classes</div>
+                      ) : (
+                        <div className="opennest-meta-grid">
+                          {courses.map((course) => (
+                            <div key={`${day}-${course.id}`}>
+                              <strong>
+                                {course.courseCode ? `${course.courseCode} — ` : ""}
+                                {course.courseName}
+                              </strong>
+                              <div className="opennest-list-meta">
+                                {course.startTime || "-"} - {course.endTime || "-"}
+                                {course.classroom ? ` · ${course.classroom}` : ""}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </DashboardCard>
+
+              <DashboardCard title="Term Overview">
+                <div className="opennest-meta-grid">
+                  <div>
+                    <strong>Term:</strong> {currentTerm}
+                  </div>
+                  <div>
+                    <strong>Courses Registered:</strong> {courses.length}
+                  </div>
+                  <div>
+                    <strong>Class Days:</strong>{" "}
+                    {uniqueDays.length > 0 ? uniqueDays.join(", ") : "-"}
+                  </div>
+                </div>
+              </DashboardCard>
+
+              <DashboardCard title="Vacation Days">
+                {totalVacationDays > 0 ? (
+                  <div className="opennest-pill-row">
+                    {Array.from(
+                      new Set(courses.flatMap((course) => course.vacationDays || []))
+                    )
+                      .sort()
+                      .map((day) => (
+                        <span key={day} className="opennest-pill gold">
+                          {day}
+                        </span>
+                      ))}
+                  </div>
+                ) : (
+                  <div className="opennest-empty-state">No vacation days added.</div>
+                )}
+              </DashboardCard>
             </div>
 
-            {/* Course list */}
-            <div className="space-y-4">
-              {courses.map((course) => (
-                <div key={course.id} className="rounded-2xl border bg-white p-5 shadow-sm">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h3 className="font-semibold text-lg">
-                        {course.courseCode ? `${course.courseCode} — ` : ""}
-                        {course.courseName}
-                      </h3>
-                      <p className="text-sm text-gray-500 mt-1">{course.term}</p>
+            <div className="opennest-section">
+              <DashboardCard
+                title="Add Course"
+                accentClass="opennest-module-accent-studies"
+              >
+                <div className="opennest-form">
+                  <input
+                    placeholder="Term (e.g. Spring 2026)"
+                    value={term}
+                    onChange={(e) => setTerm(e.target.value)}
+                  />
+
+                  <input
+                    placeholder="Course Name"
+                    value={courseName}
+                    onChange={(e) => setCourseName(e.target.value)}
+                  />
+
+                  <input
+                    placeholder="Course Code"
+                    value={courseCode}
+                    onChange={(e) => setCourseCode(e.target.value)}
+                  />
+
+                  <div>
+                    <div className="opennest-list-meta" style={{ marginBottom: 8 }}>
+                      Class Days
+                    </div>
+                    <div className="opennest-pill-row">
+                      {weekDays.map((day) => (
+                        <button
+                          key={day}
+                          type="button"
+                          onClick={() => toggleDay(day)}
+                          className={`opennest-pill ${
+                            days.includes(day) ? "teal" : ""
+                          }`}
+                        >
+                          {day}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <input
+                    placeholder="Classroom"
+                    value={classroom}
+                    onChange={(e) => setClassroom(e.target.value)}
+                  />
+
+                  <div className="opennest-form-row-2">
+                    <input
+                      type="time"
+                      value={startTime}
+                      onChange={(e) => setStartTime(e.target.value)}
+                    />
+                    <input
+                      type="time"
+                      value={endTime}
+                      onChange={(e) => setEndTime(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="opennest-form-row-2">
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                    />
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                    />
+                  </div>
+
+                  <div>
+                    <div className="opennest-list-meta" style={{ marginBottom: 8 }}>
+                      Vacation Days
                     </div>
 
-                    {course.id && (
-                      <Link
-                        href={`/entry/studies/${course.id}`}
-                        className="text-sm underline"
+                    <div className="opennest-form-row-2">
+                      <input
+                        type="date"
+                        value={vacationInput}
+                        onChange={(e) => setVacationInput(e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        onClick={addVacationDay}
+                        className="opennest-button opennest-button-secondary"
                       >
-                        Open
-                      </Link>
+                        Add Day
+                      </button>
+                    </div>
+
+                    {vacationDays.length > 0 && (
+                      <div className="opennest-pill-row" style={{ marginTop: 10 }}>
+                        {vacationDays.map((day) => (
+                          <span key={day} className="opennest-pill gold">
+                            {day}
+                          </span>
+                        ))}
+                      </div>
                     )}
                   </div>
 
-                  <div className="mt-4 grid gap-2 text-sm">
-                    <p><strong>Days:</strong> {(course.days || []).join(", ")}</p>
-                    <p><strong>Classroom:</strong> {course.classroom || "-"}</p>
-                    <p><strong>Time:</strong> {course.startTime || "-"} - {course.endTime || "-"}</p>
-                    <p><strong>Dates:</strong> {course.startDate} → {course.endDate}</p>
-                    <p>
-                      <strong>Vacation Days:</strong>{" "}
-                      {(course.vacationDays || []).length > 0
-                        ? course.vacationDays.join(", ")
-                        : "-"}
-                    </p>
-                  </div>
-                </div>
-              ))}
+                  <textarea
+                    placeholder="Notes"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                  />
 
-              {courses.length === 0 && (
-                <div className="rounded-2xl border bg-white p-5 shadow-sm text-sm text-gray-500">
-                  No courses added yet.
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    className="opennest-button opennest-button-primary"
+                  >
+                    Save Course
+                  </button>
+
+                  {message && <div className="opennest-list-meta">{message}</div>}
                 </div>
-              )}
+              </DashboardCard>
             </div>
           </div>
-        ) : (
-          <StudiesCalendarDashboard courses={courses} />
+        )}
+
+        {activeTab === "courses" && (
+          <DashboardCard
+            title="Registered Courses"
+            accentClass="opennest-module-accent-studies"
+          >
+            <div className="opennest-list">
+              {courses.length > 0 ? (
+                courses.map((course) => (
+                  <div key={course.id} className="opennest-list-card teal">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="opennest-list-title">
+                          {course.courseCode ? `${course.courseCode} — ` : ""}
+                          {course.courseName}
+                        </div>
+                        <div className="opennest-list-meta">{course.term || "-"}</div>
+                      </div>
+
+                      <Link
+                        href={`/entry/studies/${course.id}`}
+                        className="underline text-sm"
+                      >
+                        Open
+                      </Link>
+                    </div>
+
+                    <div className="opennest-meta-grid">
+                      <div>
+                        <strong>Days:</strong>{" "}
+                        {Array.isArray(course.days) ? course.days.join(", ") : "-"}
+                      </div>
+                      <div>
+                        <strong>Classroom:</strong> {course.classroom || "-"}
+                      </div>
+                      <div>
+                        <strong>Time:</strong>{" "}
+                        {course.startTime && course.endTime
+                          ? `${course.startTime} - ${course.endTime}`
+                          : "-"}
+                      </div>
+                      <div>
+                        <strong>Dates:</strong> {course.startDate || "-"} →{" "}
+                        {course.endDate || "-"}
+                      </div>
+                      <div>
+                        <strong>Vacation Days:</strong>{" "}
+                        {Array.isArray(course.vacationDays) &&
+                        course.vacationDays.length > 0
+                          ? course.vacationDays.join(", ")
+                          : "-"}
+                      </div>
+                      <div>
+                        <strong>Notes:</strong> {course.notes || "-"}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="opennest-empty-state">No courses added yet.</div>
+              )}
+            </div>
+          </DashboardCard>
+        )}
+
+        {activeTab === "calendar" && (
+          <DashboardCard
+            title="Academic Calendar Snapshot"
+            accentClass="opennest-module-accent-studies"
+          >
+            {courses.length > 0 ? (
+              <div className="opennest-list">
+                {courses.map((course) => (
+                  <div key={course.id} className="opennest-list-card teal">
+                    <div className="opennest-list-title">
+                      {course.courseName}
+                    </div>
+                    <div className="opennest-list-meta">
+                      {course.startDate || "-"} → {course.endDate || "-"}
+                    </div>
+
+                    <div className="opennest-pill-row" style={{ marginTop: 10 }}>
+                      {(course.days || []).map((day: string) => (
+                        <span key={day} className="opennest-pill teal">
+                          {day}
+                        </span>
+                      ))}
+                      {Array.isArray(course.vacationDays) &&
+                        course.vacationDays.map((day: string) => (
+                          <span key={day} className="opennest-pill gold">
+                            Vacation {day}
+                          </span>
+                        ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="opennest-empty-state">
+                Add courses to see your academic calendar snapshot.
+              </div>
+            )}
+          </DashboardCard>
         )}
       </div>
+
+      <BottomNav />
     </div>
   );
 }

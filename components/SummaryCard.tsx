@@ -1,13 +1,14 @@
-interface SummaryCardProps {
+export default function SummaryCard({
+  label,
+  value,
+}: {
   label: string;
   value: string | number;
-}
-
-export default function SummaryCard({ label, value }: SummaryCardProps) {
+}) {
   return (
-    <div className="module-card">
-      <div className="module-card-title">{label}</div>
-      <div className="module-card-value">{value}</div>
+    <div className="opennest-summary-card">
+      <div className="opennest-summary-label">{label}</div>
+      <div className="opennest-summary-value">{value}</div>
     </div>
   );
 }

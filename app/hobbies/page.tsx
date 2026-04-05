@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { User } from "firebase/auth";
-import { subscribeToAuth } from "@/lib/auth";
-import { saveHobbyEntry } from "@/lib/hobbies";
-import { collection, getDocs, query, where } from "firebase/firestore";
-import { db } from "@/types/firebase1";
+import { subscribeToAuth, getUserProfile } from "@/lib/auth";
+import { loadHobbiesByAuthor, saveHobbyEntry } from "@/lib/hobbies";
 import PageHeader from "@/components/PageHeader";
 import SummaryCard from "@/components/SummaryCard";
 import DashboardCard from "@/components/DashboardCard";
-import Link from "next/link";
+import BottomNav from "@/components/BottomNav";
 
 export default function HobbiesPage() {
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<any>(null);
   const [entries, setEntries] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<"dashboard" | "board">("dashboard");
 
@@ -26,33 +26,38 @@ export default function HobbiesPage() {
   useEffect(() => {
     const unsub = subscribeToAuth(async (authUser) => {
       setUser(authUser);
+
       if (!authUser) return;
 
-      const q = query(collection(db, "hobbies"), where("authorUid", "==", authUser.uid));
-      const snap = await getDocs(q);
-      const data = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      setEntries(data);
+      const userProfile = await getUserProfile(authUser.uid);
+      setProfile(userProfile);
+
+      const hobbyData = await loadHobbiesByAuthor(authUser.uid, profile.familyId);
+      setEntries(hobbyData);
     });
 
     return () => unsub();
   }, []);
 
   async function reloadEntries(uid: string) {
-    const q = query(collection(db, "hobbies"), where("authorUid", "==", uid));
-    const snap = await getDocs(q);
-    const data = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    setEntries(data);
+    const hobbyData = await loadHobbiesByAuthor(uid, profile.familyId);
+    setEntries(hobbyData);
   }
 
   async function handleSave() {
-    if (!user) {
-      setMessage("Please sign in first.");
+    if (!user || !profile) {
+      setMessage("Please complete login setup first.");
+      return;
+    }
+
+    if (!hobbyName.trim() || !startDate) {
+      setMessage("Please enter a hobby name and start date.");
       return;
     }
 
     try {
       await saveHobbyEntry({
-        familyId: "demo-family-1",
+        familyId: profile.familyId,
         authorUid: user.uid,
         authorName: user.displayName || "Unknown",
         hobbyName,
@@ -70,192 +75,271 @@ export default function HobbiesPage() {
       setNotes("");
       setStartDate("");
       setEndDate("");
-      setMessage("Hobby entry saved.");
+      setMessage("Hobby saved.");
     } catch (error) {
       console.error(error);
-      setMessage("Failed to save hobby entry.");
+      setMessage("Failed to save hobby.");
     }
   }
 
   const activeHobbies = useMemo(
-    () => entries.filter((e) => !e.endDate),
+    () => entries.filter((entry) => !entry.endDate),
     [entries]
   );
+
   const completedHobbies = useMemo(
-    () => entries.filter((e) => !!e.endDate),
+    () => entries.filter((entry) => !!entry.endDate),
     [entries]
   );
 
   const weeklyGoals = useMemo(
-    () => entries.filter((e) => e.frequencyGoal === "weekly").length,
+    () => entries.filter((entry) => entry.frequencyGoal === "weekly").length,
+    [entries]
+  );
+
+  const dailyGoals = useMemo(
+    () => entries.filter((entry) => entry.frequencyGoal === "daily").length,
+    [entries]
+  );
+
+  const monthlyGoals = useMemo(
+    () => entries.filter((entry) => entry.frequencyGoal === "monthly").length,
     [entries]
   );
 
   return (
-    <div>
-      <PageHeader title="Hobbies" />
+    <div className="opennest-app-shell">
+      <div className="opennest-page">
+        <PageHeader title="Hobbies" />
 
-      <div className="module-page">
-        <div className="module-summary-grid">
+        <div className="opennest-hero-card">
+          <div className="opennest-card-title">Your creative life board</div>
+          <div className="opennest-card-subtitle">
+            Keep track of the things that keep you curious, playful, and growing —
+            from daily habits to long-running passions.
+          </div>
+        </div>
+
+        <div className="opennest-summary-grid">
           <SummaryCard label="Active Hobbies" value={activeHobbies.length} />
           <SummaryCard label="Completed" value={completedHobbies.length} />
           <SummaryCard label="Weekly Goals" value={weeklyGoals} />
           <SummaryCard label="Hobby Board" value={entries.length} />
         </div>
 
-        <div className="module-tabs">
+        <div className="opennest-tabs">
           <button
-            className={`module-tab ${activeTab === "dashboard" ? "active" : ""}`}
+            type="button"
+            className={`opennest-tab ${activeTab === "dashboard" ? "active" : ""}`}
             onClick={() => setActiveTab("dashboard")}
           >
             Dashboard
           </button>
           <button
-            className={`module-tab ${activeTab === "board" ? "active" : ""}`}
+            type="button"
+            className={`opennest-tab ${activeTab === "board" ? "active" : ""}`}
             onClick={() => setActiveTab("board")}
           >
             Hobby Board
           </button>
         </div>
 
-        {activeTab === "dashboard" ? (
-          <div className="module-grid-2">
-            <DashboardCard title="Active Hobbies">
-              <div className="module-list">
-                {activeHobbies.length > 0 ? (
-                  activeHobbies.map((entry) => (
-                    <div key={entry.id} className="module-item">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <div className="module-item-title">{entry.hobbyName}</div>
-                          <div className="module-item-subtitle">
-                            {entry.frequencyGoal} · started {entry.startDate || "-"}
+        {activeTab === "dashboard" && (
+          <div className="opennest-module-grid">
+            <div className="opennest-section">
+              <DashboardCard
+                title="Active Hobbies"
+                accentClass="opennest-module-accent-hobbies"
+              >
+                <div className="opennest-list">
+                  {activeHobbies.length > 0 ? (
+                    activeHobbies.map((entry) => (
+                      <div key={entry.id} className="opennest-list-card">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="opennest-list-title">
+                              {entry.hobbyName}
+                            </div>
+                            <div className="opennest-list-meta">
+                              {entry.frequencyGoal} · started {entry.startDate || "-"}
+                            </div>
                           </div>
+
+                          <Link
+                            href={`/entry/hobbies/${entry.id}`}
+                            className="underline text-sm"
+                          >
+                            Open
+                          </Link>
                         </div>
-                        <Link href={`/entry/hobbies/${entry.id}`} className="underline text-sm">
-                          Open
-                        </Link>
+
+                        {entry.notes && (
+                          <div className="opennest-meta-grid">
+                            <div>{entry.notes}</div>
+                          </div>
+                        )}
                       </div>
-
-                      {entry.notes && (
-                        <div className="module-meta">
-                          <p>{entry.notes}</p>
-                        </div>
-                      )}
+                    ))
+                  ) : (
+                    <div className="opennest-empty-state">
+                      No active hobbies yet.
                     </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-gray-500">No active hobbies yet.</p>
-                )}
-              </div>
-            </DashboardCard>
+                  )}
+                </div>
+              </DashboardCard>
 
-            <DashboardCard title="Add Hobby">
-              <div className="module-form">
-                <input
-                  placeholder="Hobby name"
-                  value={hobbyName}
-                  onChange={(e) => setHobbyName(e.target.value)}
-                />
-
-                <select
-                  value={frequencyGoal}
-                  onChange={(e) => setFrequencyGoal(e.target.value)}
-                >
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="monthly">Monthly</option>
-                </select>
-
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                />
-
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                />
-
-                <textarea
-                  placeholder="Notes"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                />
-
-                <button onClick={handleSave} className="module-button-primary">
-                  Save Hobby
-                </button>
-
-                {message && <p className="mt-3 text-sm">{message}</p>}
-              </div>
-            </DashboardCard>
-
-            <DashboardCard title="Hobby Timeline">
-              <div className="module-list">
+              <DashboardCard title="Goal Types">
                 {entries.length > 0 ? (
-                  entries.map((entry) => (
-                    <div key={entry.id} className="module-item">
-                      <div className="module-item-title">{entry.hobbyName}</div>
-                      <div className="module-item-subtitle">
-                        {entry.startDate || "-"} → {entry.endDate || "Ongoing"}
-                      </div>
-                    </div>
-                  ))
+                  <div className="opennest-pill-row">
+                    {entries.map((entry) => (
+                      <span key={entry.id} className="opennest-pill">
+                        {entry.hobbyName} · {entry.frequencyGoal}
+                      </span>
+                    ))}
+                  </div>
                 ) : (
-                  <p className="text-sm text-gray-500">No hobby timeline yet.</p>
+                  <div className="opennest-empty-state">No goal tags yet.</div>
                 )}
-              </div>
-            </DashboardCard>
+              </DashboardCard>
 
-            <DashboardCard title="Goal Types">
-              <div className="module-badge-row">
-                {entries.map((entry) => (
-                  <span key={entry.id} className="module-badge">
-                    {entry.hobbyName} · {entry.frequencyGoal}
-                  </span>
-                ))}
-                {entries.length === 0 && (
-                  <p className="text-sm text-gray-500">No goal tags yet.</p>
-                )}
-              </div>
-            </DashboardCard>
+              <DashboardCard title="Goal Mix">
+                <div className="opennest-meta-grid">
+                  <div>
+                    <strong>Daily:</strong> {dailyGoals}
+                  </div>
+                  <div>
+                    <strong>Weekly:</strong> {weeklyGoals}
+                  </div>
+                  <div>
+                    <strong>Monthly:</strong> {monthlyGoals}
+                  </div>
+                </div>
+              </DashboardCard>
+
+              <DashboardCard title="Hobby Timeline">
+                <div className="opennest-list">
+                  {entries.length > 0 ? (
+                    entries.map((entry) => (
+                      <div key={entry.id} className="opennest-list-card">
+                        <div className="opennest-list-title">
+                          {entry.hobbyName}
+                        </div>
+                        <div className="opennest-list-meta">
+                          {entry.startDate || "-"} → {entry.endDate || "Ongoing"}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="opennest-empty-state">
+                      No hobby timeline yet.
+                    </div>
+                  )}
+                </div>
+              </DashboardCard>
+            </div>
+
+            <div className="opennest-section">
+              <DashboardCard
+                title="Add Hobby"
+                accentClass="opennest-module-accent-hobbies"
+              >
+                <div className="opennest-form">
+                  <input
+                    placeholder="Hobby name"
+                    value={hobbyName}
+                    onChange={(e) => setHobbyName(e.target.value)}
+                  />
+
+                  <select
+                    value={frequencyGoal}
+                    onChange={(e) => setFrequencyGoal(e.target.value)}
+                  >
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                  </select>
+
+                  <div className="opennest-form-row-2">
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                    />
+
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                    />
+                  </div>
+
+                  <textarea
+                    placeholder="Notes"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                  />
+
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    className="opennest-button opennest-button-primary"
+                  >
+                    Save Hobby
+                  </button>
+
+                  {message && <div className="opennest-list-meta">{message}</div>}
+                </div>
+              </DashboardCard>
+            </div>
           </div>
-        ) : (
-          <div className="module-card">
-            <h2 className="module-section-title">Hobby Board</h2>
-            <div className="module-list">
+        )}
+
+        {activeTab === "board" && (
+          <DashboardCard
+            title="Hobby Board"
+            accentClass="opennest-module-accent-hobbies"
+          >
+            <div className="opennest-list">
               {entries.length > 0 ? (
                 entries.map((entry) => (
-                  <div key={entry.id} className="module-item">
+                  <div key={entry.id} className="opennest-list-card">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <div className="module-item-title">{entry.hobbyName}</div>
-                        <div className="module-item-subtitle">
-                          {entry.frequencyGoal} · {entry.startDate || "-"} → {entry.endDate || "Ongoing"}
+                        <div className="opennest-list-title">
+                          {entry.hobbyName}
+                        </div>
+                        <div className="opennest-list-meta">
+                          {entry.frequencyGoal} · {entry.startDate || "-"} →{" "}
+                          {entry.endDate || "Ongoing"}
                         </div>
                       </div>
-                      <Link href={`/entry/hobbies/${entry.id}`} className="underline text-sm">
+
+                      <Link
+                        href={`/entry/hobbies/${entry.id}`}
+                        className="underline text-sm"
+                      >
                         Open
                       </Link>
                     </div>
 
                     {entry.notes && (
-                      <div className="module-meta">
-                        <p>{entry.notes}</p>
+                      <div className="opennest-meta-grid">
+                        <div>{entry.notes}</div>
                       </div>
                     )}
                   </div>
                 ))
               ) : (
-                <p className="text-sm text-gray-500">No hobbies added yet.</p>
+                <div className="opennest-empty-state">
+                  No hobbies added yet.
+                </div>
               )}
             </div>
-          </div>
+          </DashboardCard>
         )}
       </div>
+
+      <BottomNav />
     </div>
   );
 }

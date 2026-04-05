@@ -1,19 +1,12 @@
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { CalendarItem, CalendarModuleType } from "@/types/calendar";
+import {
+  CalendarFilterInput,
+  CalendarItem,
+  CalendarModuleType,
+  CalendarUserOption,
+} from "@/types/calendar";
 import { canUserSeeReflection } from "@/lib/reflectionVisibility";
-
-type RelationshipType = "parent" | "sibling" | "child";
-
-export type CalendarFilterInput = {
-  familyId: string;
-  viewerUid: string;
-  viewerRelationship: RelationshipType;
-  selectedUserUid: string | "all";
-  selectedModules: CalendarModuleType[];
-  startDate: string;
-  endDate: string;
-};
 
 function formatLocalDate(date: Date): string {
   const year = date.getFullYear();
@@ -22,39 +15,47 @@ function formatLocalDate(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-function safeDate(value?: string | number): string | null {
+function parseDate(value?: string | number | null): string | null {
   if (!value) return null;
 
   if (typeof value === "string") {
     if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
-    const d = new Date(value);
-    if (isNaN(d.getTime())) return null;
-    return formatLocalDate(d);
+    const parsed = new Date(value);
+    if (isNaN(parsed.getTime())) return null;
+    return formatLocalDate(parsed);
   }
 
   if (typeof value === "number") {
-    const d = new Date(value);
-    if (isNaN(d.getTime())) return null;
-    return formatLocalDate(d);
+    const parsed = new Date(value);
+    if (isNaN(parsed.getTime())) return null;
+    return formatLocalDate(parsed);
   }
 
   return null;
 }
 
-function expandDateRange(
+function overlapsRange(
+  itemStart: string,
+  itemEnd: string,
+  rangeStart: string,
+  rangeEnd: string
+) {
+  return itemStart <= rangeEnd && itemEnd >= rangeStart;
+}
+
+function expandRangeToItems(
   startDate: string,
   endDate: string,
   base: Omit<CalendarItem, "id" | "date" | "dateKind">
 ): CalendarItem[] {
-  const items: CalendarItem[] = [];
-
   const start = new Date(`${startDate}T00:00:00`);
   const end = new Date(`${endDate}T00:00:00`);
 
   if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) {
-    return items;
+    return [];
   }
 
+  const items: CalendarItem[] = [];
   const current = new Date(start);
 
   while (current <= end) {
@@ -83,13 +84,10 @@ function expandDateRange(
   return items;
 }
 
-function withinRange(date: string, startDate: string, endDate: string) {
-  return date >= startDate && date <= endDate;
-}
-
-function keepItem(item: CalendarItem, filters: CalendarFilterInput): boolean {
+function keepByFilters(item: CalendarItem, filters: CalendarFilterInput): boolean {
   if (!filters.selectedModules.includes(item.type)) return false;
-  if (!withinRange(item.date, filters.startDate, filters.endDate)) return false;
+
+  if (item.date < filters.startDate || item.date > filters.endDate) return false;
 
   if (
     filters.selectedUserUid !== "all" &&
@@ -101,24 +99,188 @@ function keepItem(item: CalendarItem, filters: CalendarFilterInput): boolean {
   return true;
 }
 
-async function loadUsersByFamily(familyId: string) {
-  const q = query(collection(db, "users"), where("familyId", "==", familyId));
-  const snap = await getDocs(q);
+function sortCalendarItems(items: CalendarItem[]) {
+  return items.sort((a, b) => {
+    if (a.date !== b.date) return a.date.localeCompare(b.date);
+    if (a.type !== b.type) return a.type.localeCompare(b.type);
+    if (a.authorName !== b.authorName) return a.authorName.localeCompare(b.authorName);
+    return a.title.localeCompare(b.title);
+  });
+}
 
+async function loadCollectionByFamily(collectionName: string, familyId: string) {
+  const q = query(collection(db, collectionName), where("familyId", "==", familyId));
+  const snap = await getDocs(q);
   return snap.docs.map((doc) => ({
     id: doc.id,
     ...doc.data(),
-  }));
+  })) as any[];
 }
 
-export async function loadFamilyUsers(familyId: string) {
-  const users = await loadUsersByFamily(familyId);
+function buildStudiesItems(rows: any[], filters: CalendarFilterInput): CalendarItem[] {
+  const items: CalendarItem[] = [];
 
-  return users
-    .map((u: any) => ({
-      uid: u.uid,
-      displayName: u.displayName || "Unknown",
-      relationship: u.relationship || "child",
+  rows.forEach((row) => {
+    const start = parseDate(row.startDate);
+    const end = parseDate(row.endDate || row.startDate);
+
+    if (!start || !end) return;
+    if (!overlapsRange(start, end, filters.startDate, filters.endDate)) return;
+
+    const expanded = expandRangeToItems(start, end, {
+      sourceId: row.id,
+      type: "studies",
+      title: row.courseName || "Course",
+      authorUid: row.authorUid || "",
+      authorName: row.authorName || "Unknown",
+      href: `/entry/studies/${row.id}`,
+      meta: [row.courseCode, row.classroom].filter(Boolean).join(" · "),
+      timeLabel:
+        row.startTime && row.endTime ? `${row.startTime} - ${row.endTime}` : undefined,
+      days: Array.isArray(row.days) ? row.days : [],
+      startTime: row.startTime,
+      endTime: row.endTime,
+    });
+
+    expanded.forEach((item) => {
+      if (keepByFilters(item, filters)) items.push(item);
+    });
+
+    const vacationDays = Array.isArray(row.vacationDays) ? row.vacationDays : [];
+
+    vacationDays.forEach((vacDate: string) => {
+      const vac = parseDate(vacDate);
+      if (!vac) return;
+
+      const item: CalendarItem = {
+        id: `${row.id}-vac-${vac}`,
+        sourceId: row.id,
+        type: "studies",
+        title: `${row.courseName || "Course"} vacation`,
+        date: vac,
+        dateKind: "single",
+        authorUid: row.authorUid || "",
+        authorName: row.authorName || "Unknown",
+        href: `/entry/studies/${row.id}`,
+        meta: "No class day",
+      };
+
+      if (keepByFilters(item, filters)) items.push(item);
+    });
+  });
+
+  return items;
+}
+
+function buildInternshipItems(rows: any[], filters: CalendarFilterInput): CalendarItem[] {
+  const items: CalendarItem[] = [];
+
+  rows.forEach((row) => {
+    const start = parseDate(row.startDate);
+    const end = parseDate(row.endDate || row.startDate);
+
+    if (!start || !end) return;
+    if (!overlapsRange(start, end, filters.startDate, filters.endDate)) return;
+
+    const expanded = expandRangeToItems(start, end, {
+      sourceId: row.id,
+      type: "internship",
+      title: row.company || "Internship",
+      authorUid: row.authorUid || "",
+      authorName: row.authorName || "Unknown",
+      href: `/entry/internship/${row.id}`,
+      meta: row.status || "",
+    });
+
+    expanded.forEach((item) => {
+      if (keepByFilters(item, filters)) items.push(item);
+    });
+  });
+
+  return items;
+}
+
+function buildReadingItems(rows: any[], filters: CalendarFilterInput): CalendarItem[] {
+  const items: CalendarItem[] = [];
+
+  rows.forEach((row) => {
+    const start = parseDate(row.startDate) || parseDate(row.createdAt);
+    if (!start) return;
+
+    let end: string;
+
+    if (row.status === "reading") {
+      end = parseDate(row.endDate) || filters.endDate;
+    } else if (row.status === "finished") {
+      end = parseDate(row.endDate) || start;
+    } else {
+      end = start;
+    }
+
+    if (!overlapsRange(start, end, filters.startDate, filters.endDate)) return;
+
+    const expanded = expandRangeToItems(start, end, {
+      sourceId: row.id,
+      type: "reading",
+      title: row.title || "Reading",
+      authorUid: row.authorUid || "",
+      authorName: row.authorName || "Unknown",
+      href: `/entry/reading/${row.id}`,
+      meta: row.status || "",
+    });
+
+    expanded.forEach((item) => {
+      if (keepByFilters(item, filters)) items.push(item);
+    });
+  });
+
+  return items;
+}
+
+function buildReflectionItems(rows: any[], filters: CalendarFilterInput): CalendarItem[] {
+  const items: CalendarItem[] = [];
+
+  rows.forEach((row) => {
+    const visible = canUserSeeReflection(row, {
+      uid: filters.viewerUid,
+      familyId: filters.familyId,
+      relationship: filters.viewerRelationship,
+    });
+
+    if (!visible) return;
+
+    const date = parseDate(row.createdAt);
+    if (!date) return;
+
+    const item: CalendarItem = {
+      id: `${row.id}-${date}`,
+      sourceId: row.id,
+      type: "reflection",
+      title: row.highlight || "Reflection",
+      date,
+      dateKind: "single",
+      authorUid: row.authorUid || "",
+      authorName: row.authorName || "Unknown",
+      href: `/entry/reflection/${row.id}`,
+      meta: row.mood || "",
+    };
+
+    if (keepByFilters(item, filters)) items.push(item);
+  });
+
+  return items;
+}
+
+export async function loadFamilyUsers(
+  familyId: string
+): Promise<CalendarUserOption[]> {
+  const rows = await loadCollectionByFamily("users", familyId);
+
+  return rows
+    .map((row) => ({
+      uid: row.uid,
+      displayName: row.displayName || "Unknown",
+      relationship: row.relationship || "child",
     }))
     .sort((a, b) => a.displayName.localeCompare(b.displayName));
 }
@@ -126,183 +288,38 @@ export async function loadFamilyUsers(familyId: string) {
 export async function loadCalendarItems(
   filters: CalendarFilterInput
 ): Promise<CalendarItem[]> {
-  const items: CalendarItem[] = [];
+  const loaders: Partial<Record<CalendarModuleType, Promise<any[]>>> = {};
 
-  // STUDIES
   if (filters.selectedModules.includes("studies")) {
-    const studiesQ = query(
-      collection(db, "studies"),
-      where("familyId", "==", filters.familyId)
-    );
-    const studiesSnap = await getDocs(studiesQ);
-
-    studiesSnap.docs.forEach((docSnap) => {
-      const d: any = { id: docSnap.id, ...docSnap.data() };
-
-      const start = safeDate(d.startDate);
-      const end = safeDate(d.endDate || d.startDate);
-
-      if (!start || !end) return;
-
-      const expanded = expandDateRange(start, end, {
-        sourceId: d.id,
-        type: "studies",
-        title: d.courseName || "Course",
-        authorUid: d.authorUid || "",
-        authorName: d.authorName || "Unknown",
-        href: `/entry/studies/${d.id}`,
-        meta: [d.courseCode, d.classroom].filter(Boolean).join(" · "),
-        timeLabel:
-          d.startTime && d.endTime ? `${d.startTime} - ${d.endTime}` : undefined,
-        days: Array.isArray(d.days) ? d.days : [],
-        startTime: d.startTime,
-        endTime: d.endTime,
-      });
-
-      expanded.forEach((item) => {
-        if (keepItem(item, filters)) items.push(item);
-      });
-
-      const vacationDays = Array.isArray(d.vacationDays) ? d.vacationDays : [];
-      vacationDays.forEach((vacDate: string) => {
-        const vac = safeDate(vacDate);
-        if (!vac) return;
-
-        const item: CalendarItem = {
-          id: `${d.id}-vac-${vac}`,
-          sourceId: d.id,
-          type: "studies",
-          title: `${d.courseName || "Course"} vacation`,
-          date: vac,
-          dateKind: "single",
-          authorUid: d.authorUid || "",
-          authorName: d.authorName || "Unknown",
-          href: `/entry/studies/${d.id}`,
-          meta: "No class day",
-        };
-
-        if (keepItem(item, filters)) items.push(item);
-      });
-    });
+    loaders.studies = loadCollectionByFamily("studies", filters.familyId);
   }
 
-  // INTERNSHIP
   if (filters.selectedModules.includes("internship")) {
-    const internshipQ = query(
-      collection(db, "internship"),
-      where("familyId", "==", filters.familyId)
-    );
-    const internshipSnap = await getDocs(internshipQ);
-
-    internshipSnap.docs.forEach((docSnap) => {
-      const d: any = { id: docSnap.id, ...docSnap.data() };
-
-      const start = safeDate(d.startDate);
-      const end = safeDate(d.endDate || d.startDate);
-
-      if (!start || !end) return;
-
-      const expanded = expandDateRange(start, end, {
-        sourceId: d.id,
-        type: "internship",
-        title: d.company || "Internship",
-        authorUid: d.authorUid || "",
-        authorName: d.authorName || "Unknown",
-        href: `/entry/internship/${d.id}`,
-        meta: d.status || "",
-      });
-
-      expanded.forEach((item) => {
-        if (keepItem(item, filters)) items.push(item);
-      });
-    });
+    loaders.internship = loadCollectionByFamily("internship", filters.familyId);
   }
 
-  // READING
   if (filters.selectedModules.includes("reading")) {
-    const readingQ = query(
-      collection(db, "reading"),
-      where("familyId", "==", filters.familyId)
-    );
-    const readingSnap = await getDocs(readingQ);
-
-    readingSnap.docs.forEach((docSnap) => {
-      const d: any = { id: docSnap.id, ...docSnap.data() };
-
-      const start = safeDate(d.startDate) || safeDate(d.createdAt);
-      if (!start) return;
-
-      let end: string;
-
-      if (d.status === "reading") {
-        end = safeDate(d.endDate) || filters.endDate;
-      } else if (d.status === "finished") {
-        end = safeDate(d.endDate) || start;
-      } else {
-        // to-read and everything else
-        end = start;
-      }
-
-      const expanded = expandDateRange(start, end, {
-        sourceId: d.id,
-        type: "reading",
-        title: d.title || "Reading",
-        authorUid: d.authorUid || "",
-        authorName: d.authorName || "Unknown",
-        href: `/entry/reading/${d.id}`,
-        meta: d.status || "",
-      });
-
-      expanded.forEach((item) => {
-        if (keepItem(item, filters)) items.push(item);
-      });
-    });
+    loaders.reading = loadCollectionByFamily("reading", filters.familyId);
   }
 
-  // REFLECTION
   if (filters.selectedModules.includes("reflection")) {
-    const reflectionsQ = query(
-      collection(db, "reflections"),
-      where("familyId", "==", filters.familyId)
-    );
-    const reflectionsSnap = await getDocs(reflectionsQ);
-
-    reflectionsSnap.docs.forEach((docSnap) => {
-      const d: any = { id: docSnap.id, ...docSnap.data() };
-
-      const visible = canUserSeeReflection(d, {
-        uid: filters.viewerUid,
-        familyId: filters.familyId,
-        relationship: filters.viewerRelationship,
-      });
-
-      if (!visible) return;
-
-      const singleDate =
-        safeDate(d.createdAt) || formatLocalDate(new Date());
-
-      const item: CalendarItem = {
-        id: `${d.id}-${singleDate}`,
-        sourceId: d.id,
-        type: "reflection",
-        title: d.highlight || "Reflection",
-        date: singleDate,
-        dateKind: "single",
-        authorUid: d.authorUid || "",
-        authorName: d.authorName || "Unknown",
-        href: `/entry/reflection/${d.id}`,
-        meta: d.mood || "",
-      };
-
-      if (keepItem(item, filters)) items.push(item);
-    });
+    loaders.reflection = loadCollectionByFamily("reflections", filters.familyId);
   }
 
-  return items.sort((a, b) => {
-    if (a.date !== b.date) return a.date.localeCompare(b.date);
-    if (a.authorName !== b.authorName) {
-      return a.authorName.localeCompare(b.authorName);
-    }
-    return a.title.localeCompare(b.title);
-  });
+  const [studiesRows, internshipRows, readingRows, reflectionRows] =
+    await Promise.all([
+      loaders.studies ?? Promise.resolve([]),
+      loaders.internship ?? Promise.resolve([]),
+      loaders.reading ?? Promise.resolve([]),
+      loaders.reflection ?? Promise.resolve([]),
+    ]);
+
+  const items = [
+    ...buildStudiesItems(studiesRows, filters),
+    ...buildInternshipItems(internshipRows, filters),
+    ...buildReadingItems(readingRows, filters),
+    ...buildReflectionItems(reflectionRows, filters),
+  ];
+
+  return sortCalendarItems(items);
 }

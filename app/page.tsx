@@ -1,17 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { User } from "firebase/auth";
 import { subscribeToAuth, getUserProfile, logOut } from "@/lib/auth";
+import { loadReadingByAuthor } from "@/lib/reading";
+import { loadStudiesByAuthor } from "@/lib/studies";
+import { loadHobbiesByAuthor } from "@/lib/hobbies";
+import { loadInternshipsByAuthor } from "@/lib/internship";
+import { loadReflections } from "@/lib/reflections";
+import SummaryCard from "@/components/SummaryCard";
+import DashboardCard from "@/components/DashboardCard";
+import BottomNav from "@/components/BottomNav";
 
 export default function HomePage() {
-  const router = useRouter();
-
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  const [readingCount, setReadingCount] = useState(0);
+  const [studiesCount, setStudiesCount] = useState(0);
+  const [hobbiesCount, setHobbiesCount] = useState(0);
+  const [internshipCount, setInternshipCount] = useState(0);
+  const [familyReflectionCount, setFamilyReflectionCount] = useState(0);
 
   useEffect(() => {
     const unsub = subscribeToAuth(async (authUser) => {
@@ -19,23 +30,40 @@ export default function HomePage() {
 
       if (!authUser) {
         setProfile(null);
+        setReadingCount(0);
+        setStudiesCount(0);
+        setHobbiesCount(0);
+        setInternshipCount(0);
+        setFamilyReflectionCount(0);
         setLoading(false);
         return;
       }
 
       try {
         const userProfile = await getUserProfile(authUser.uid);
+        setProfile(userProfile);
 
         if (!userProfile) {
-          setProfile(null);
           setLoading(false);
           return;
         }
 
-        setProfile(userProfile);
+        const [reading, studies, hobbies, internships, reflections] =
+          await Promise.all([
+            loadReadingByAuthor(authUser.uid),
+            loadStudiesByAuthor(authUser.uid),
+            loadHobbiesByAuthor(authUser.uid, userProfile.familyId),
+            loadInternshipsByAuthor(authUser.uid),
+            loadReflections(userProfile.familyId),
+          ]);
+
+        setReadingCount(reading.length);
+        setStudiesCount(studies.length);
+        setHobbiesCount(hobbies.length);
+        setInternshipCount(internships.length);
+        setFamilyReflectionCount(reflections.length);
       } catch (error) {
-        console.error("Failed to load user profile:", error);
-        setProfile(null);
+        console.error("Failed to load home dashboard:", error);
       } finally {
         setLoading(false);
       }
@@ -44,330 +72,314 @@ export default function HomePage() {
     return () => unsub();
   }, []);
 
-  function renderContent() {
-    if (loading) {
-      return (
-        <>
-          <h1 className="text-4xl font-bold tracking-tight text-amber-950">
-            OpenNest
-          </h1>
-          <p className="mt-4 text-sm text-slate-700">
-            Waking up the nest...
-          </p>
-        </>
-      );
-    }
+  const greeting = useMemo(() => {
+    if (!user?.displayName) return "Welcome";
+    const first = user.displayName.split(" ")[0];
+    return `Welcome, ${first}`;
+  }, [user]);
 
-    if (!user) {
-      return (
-        <>
-          <h1 className="text-4xl font-bold tracking-tight text-amber-950">
-            OpenNest
-          </h1>
-
-          <p className="mt-3 text-sm leading-6 text-slate-700">
-            A shared family space for reflections, routines, milestones, and
-            the small everyday details that make conversations warmer and more
-            meaningful.
-          </p>
-
-          <div className="rounded-2xl bg-amber-50 border border-amber-100 p-4 mt-6 mb-6">
-            <p className="text-sm text-amber-900 leading-6">
-              Stay close even when life stretches the map. Sign in to enter your
-              family space, share updates, and keep your calendar of shared life
-              in view.
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            <Link
-              href="/login"
-              className="block w-full rounded-2xl px-4 py-3.5 bg-amber-900 text-white font-medium shadow-md hover:bg-amber-950 transition text-center"
-            >
-              Login with Gmail
-            </Link>
-
-            <Link
-              href="/calendar"
-              className="block w-full rounded-2xl px-4 py-3 border border-amber-300 text-amber-950 font-medium hover:bg-amber-50 transition text-center"
-            >
-              View Calendar
-            </Link>
-          </div>
-
-          <p className="mt-4 text-xs text-center text-slate-500">
-            Built for families living apart, thinking together.
-          </p>
-        </>
-      );
-    }
-
-    if (user && !profile) {
-      return (
-        <>
-          <h1 className="text-4xl font-bold tracking-tight text-amber-950">
-            Welcome back, {user.displayName || "there"}
-          </h1>
-
-          <p className="mt-3 text-sm leading-6 text-slate-700">
-            Your account is signed in, but your family profile is not complete
-            yet.
-          </p>
-
-          <div className="rounded-2xl bg-amber-50 border border-amber-100 p-4 mt-6 mb-6">
-            <p className="text-sm text-amber-900 leading-6">
-              Choose or create your family and select your family member type to
-              continue into OpenNest.
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            <Link
-              href="/onboarding"
-              className="block w-full rounded-2xl px-4 py-3.5 bg-amber-900 text-white font-medium shadow-md hover:bg-amber-950 transition text-center"
-            >
-              Complete Family Setup
-            </Link>
-
-            <button
-              onClick={logOut}
-              className="block w-full rounded-2xl px-4 py-3 border border-amber-300 text-amber-950 font-medium hover:bg-amber-50 transition text-center"
-            >
-              Log out
-            </button>
-          </div>
-        </>
-      );
-    }
-
+  if (loading) {
     return (
-      <>
-        <h1 className="text-4xl font-bold tracking-tight text-amber-950">
-          OpenNest
-        </h1>
-
-        <p className="mt-3 text-sm leading-6 text-slate-700">
-          Welcome back, <span className="font-medium">{user.displayName}</span>.
-          Your family space is ready.
-        </p>
-
-        <div className="rounded-2xl bg-amber-50 border border-amber-100 p-4 mt-6 mb-6 text-left">
-          <p className="text-sm text-amber-900 leading-6">
-            <strong>Family role:</strong> {profile?.relationship}
-          </p>
+      <div className="opennest-app-shell">
+        <div className="opennest-page">
+          <HeroHeader />
+          <div className="opennest-card">
+            <div className="opennest-card-subtitle">Loading your nest...</div>
+          </div>
         </div>
+      </div>
+    );
+  }
 
-        <div className="space-y-3">
-          <Link
-            href="/reflection"
-            className="block w-full rounded-2xl px-4 py-3 border border-amber-300 text-amber-950 font-medium hover:bg-amber-50 transition text-center"
-          >
-            Reflection
-          </Link>
+  if (!user) {
+    return (
+      <div className="opennest-app-shell">
+        <div className="opennest-page">
+          <HeroHeader />
 
-          <Link
-            href="/feed"
-            className="block w-full rounded-2xl px-4 py-3 border border-amber-300 text-amber-950 font-medium hover:bg-amber-50 transition text-center"
-          >
-            Feed
-          </Link>
+          <div className="opennest-hero-card" style={{ marginBottom: 18 }}>
+            <div className="opennest-card-title">
+              Stay close, even when life stretches the map
+            </div>
+            <div className="opennest-card-subtitle">
+              OpenNest is a shared family space for reflections, courses, reading,
+              routines, milestones, and the quiet details that help people feel
+              near each other.
+            </div>
+          </div>
 
-            <Link
-            href="/studies"
-            className="block w-full rounded-2xl px-4 py-3 border border-amber-300 text-amber-950 font-medium hover:bg-amber-50 transition text-center"
-          >
-            Classes
-          </Link>
+          <div className="opennest-section">
+            <DashboardCard title="Get started">
+              <div className="opennest-list">
+                <div className="opennest-list-card teal">
+                  <div className="opennest-list-title">Enter your family space</div>
+                  <div className="opennest-list-meta">
+                    Sign in, choose your family, and begin sharing life in a more
+                    structured and thoughtful way.
+                  </div>
+                  <div style={{ marginTop: 14 }}>
+                    <Link href="/login" className="opennest-button opennest-button-primary">
+                      Go to Login
+                    </Link>
+                  </div>
+                </div>
 
-            <Link
-            href="/internship"
-            className="block w-full rounded-2xl px-4 py-3 border border-amber-300 text-amber-950 font-medium hover:bg-amber-50 transition text-center"
-          >
-            Internship
-          </Link>
-
-            <Link
-            href="/reading"
-            className="block w-full rounded-2xl px-4 py-3 border border-amber-300 text-amber-950 font-medium hover:bg-amber-50 transition text-center"
-          >
-            Reading
-          </Link>
-
-            <Link
-            href="/hobbies"
-            className="block w-full rounded-2xl px-4 py-3 border border-amber-300 text-amber-950 font-medium hover:bg-amber-50 transition text-center"
-          >
-            Hobbies
-          </Link>
-
-          <Link
-            href="/calendar"
-            className="block w-full rounded-2xl px-4 py-3 border border-amber-300 text-amber-950 font-medium hover:bg-amber-50 transition text-center"
-          >
-            Calendar
-          </Link>
-
-          <button
-            onClick={logOut}
-            className="block w-full rounded-2xl px-4 py-3.5 bg-amber-900 text-white font-medium shadow-md hover:bg-amber-950 transition text-center"
-          >
-            Log out
-          </button>
+                <div className="opennest-list-card gold">
+                  <div className="opennest-list-title">Explore the calendar</div>
+                  <div className="opennest-list-meta">
+                    View family schedules one module at a time with designs tailored
+                    for courses, reading, internships, and reflections.
+                  </div>
+                  <div style={{ marginTop: 14 }}>
+                    <Link href="/calendar" className="opennest-button opennest-button-secondary">
+                      Open Family Calendar
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </DashboardCard>
+          </div>
         </div>
-      </>
+      </div>
+    );
+  }
+
+  if (user && !profile) {
+    return (
+      <div className="opennest-app-shell">
+        <div className="opennest-page">
+          <HeroHeader />
+
+          <div className="opennest-hero-card" style={{ marginBottom: 18 }}>
+            <div className="opennest-card-title">{greeting}</div>
+            <div className="opennest-card-subtitle">
+              Your account is ready. Your family setup is the next step.
+            </div>
+          </div>
+
+          <DashboardCard title="Complete setup">
+            <div className="opennest-list">
+              <div className="opennest-list-card teal">
+                <div className="opennest-list-title">Choose or create your family</div>
+                <div className="opennest-list-meta">
+                  Set your family group and relationship so OpenNest can show the
+                  right shared space and visibility.
+                </div>
+
+                <div
+                  style={{
+                    marginTop: 14,
+                    display: "flex",
+                    gap: 10,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <Link href="/family" className="opennest-button opennest-button-primary">
+                    Family Setup
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={logOut}
+                    className="opennest-button opennest-button-secondary"
+                  >
+                    Log out
+                  </button>
+                </div>
+              </div>
+            </div>
+          </DashboardCard>
+        </div>
+      </div>
     );
   }
 
   return (
-    <div className="min-h-screen overflow-hidden bg-gradient-to-b from-sky-100 via-amber-50 to-orange-100 relative">
-      {/* Animated clouds */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="cloud cloud-1 absolute top-12 left-8 h-16 w-32 rounded-full bg-white/60 blur-xl" />
-        <div className="cloud cloud-2 absolute top-24 right-12 h-20 w-40 rounded-full bg-white/50 blur-xl" />
-        <div className="cloud cloud-3 absolute top-40 left-1/3 h-14 w-28 rounded-full bg-white/50 blur-xl" />
-      </div>
+    <div className="opennest-app-shell">
+      <div className="opennest-page">
+        <HeroHeader />
 
-      {/* Animated birds */}
-      <div className="bird bird-1 absolute top-14 left-10 text-slate-600/70 text-2xl rotate-[-8deg]">
-        ∿ ∿
-      </div>
-      <div className="bird bird-2 absolute top-24 right-20 text-slate-600/60 text-3xl rotate-[6deg]">
-        ∿ ∿ ∿
-      </div>
-      <div className="bird bird-3 absolute top-40 left-1/4 text-slate-600/50 text-xl">
-        ∿ ∿
-      </div>
+        <div className="opennest-hero-card" style={{ marginBottom: 18 }}>
+          <div className="opennest-card-title">{greeting}</div>
+          <div className="opennest-card-subtitle">
+            A shared place for family rhythm — courses, reading, reflections,
+            routines, milestones, and the small signals that make better
+            conversations possible.
+          </div>
+        </div>
 
-      <div className="relative min-h-screen flex items-center justify-center px-5 py-10">
-        <div className="w-full max-w-md">
-          {/* Nest illustration */}
-          <div className="flex justify-center mb-6">
-            <div className="nest-wrap relative h-40 w-40">
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-32 h-16 rounded-[999px] border-[6px] border-amber-800 bg-amber-200/80 shadow-lg" />
-              <div className="absolute bottom-7 left-1/2 -translate-x-1/2 w-28 h-12 rounded-[999px] border-[5px] border-amber-700 bg-amber-100/90" />
+        <div className="opennest-summary-grid">
+          <SummaryCard label="Family Reflections" value={familyReflectionCount} />
+          <SummaryCard label="My Courses" value={studiesCount} />
+          <SummaryCard label="My Reading" value={readingCount} />
+          <SummaryCard label="My Hobbies" value={hobbiesCount} />
+        </div>
 
-              <div className="absolute bottom-11 left-[42px] h-7 w-5 rounded-full bg-rose-100 border border-amber-700 rotate-[-8deg]" />
-              <div className="absolute bottom-12 left-[60px] h-7 w-5 rounded-full bg-sky-100 border border-amber-700 rotate-[4deg]" />
-              <div className="absolute bottom-11 left-[79px] h-7 w-5 rounded-full bg-emerald-100 border border-amber-700 rotate-[10deg]" />
+        <div className="opennest-module-grid">
+          <div className="opennest-section">
+            <DashboardCard title="Continue">
+              <div className="opennest-list">
+                <div className="opennest-list-card teal">
+                  <div className="opennest-list-title">Family Calendar</div>
+                  <div className="opennest-list-meta">
+                    Open one module at a time and view it across family members.
+                  </div>
+                  <div style={{ marginTop: 12 }}>
+                    <Link href="/calendar" className="underline text-sm">
+                      Open Calendar
+                    </Link>
+                  </div>
+                </div>
 
-              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-2 w-40 rounded-full bg-amber-900" />
-            </div>
+                <div className="opennest-list-card gold">
+                  <div className="opennest-list-title">Feed</div>
+                  <div className="opennest-list-meta">
+                    See recent family reflections and emotional signals.
+                  </div>
+                  <div style={{ marginTop: 12 }}>
+                    <Link href="/feed" className="underline text-sm">
+                      Open Feed
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </DashboardCard>
+
+            <DashboardCard title="Your modules">
+              <div className="opennest-list">
+                <div className="opennest-list-card opennest-module-accent-studies">
+                  <div className="opennest-list-title">Courses</div>
+                  <div className="opennest-list-meta">
+                    Courses registered: {studiesCount}
+                  </div>
+                  <div style={{ marginTop: 12 }}>
+                    <Link href="/studies" className="underline text-sm">
+                      Open Courses
+                    </Link>
+                  </div>
+                </div>
+
+                <div className="opennest-list-card opennest-module-accent-reading">
+                  <div className="opennest-list-title">Reading</div>
+                  <div className="opennest-list-meta">
+                    Reading entries: {readingCount}
+                  </div>
+                  <div style={{ marginTop: 12 }}>
+                    <Link href="/reading" className="underline text-sm">
+                      Open Reading
+                    </Link>
+                  </div>
+                </div>
+
+                <div className="opennest-list-card opennest-module-accent-hobbies">
+                  <div className="opennest-list-title">Hobbies</div>
+                  <div className="opennest-list-meta">
+                    Hobbies tracked: {hobbiesCount}
+                  </div>
+                  <div style={{ marginTop: 12 }}>
+                    <Link href="/hobbies" className="underline text-sm">
+                      Open Hobbies
+                    </Link>
+                  </div>
+                </div>
+
+                <div className="opennest-list-card opennest-module-accent-internship">
+                  <div className="opennest-list-title">Internship</div>
+                  <div className="opennest-list-meta">
+                    Internship items: {internshipCount}
+                  </div>
+                  <div style={{ marginTop: 12 }}>
+                    <Link href="/internship" className="underline text-sm">
+                      Open Internship
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </DashboardCard>
           </div>
 
-          {/* Card */}
-          <div className="home-card rounded-3xl border border-amber-200/70 bg-white/85 backdrop-blur-md shadow-2xl px-7 py-8 text-center">
-            {renderContent()}
+          <div className="opennest-section">
+            <DashboardCard title="Your family profile">
+              <div className="opennest-meta-grid">
+                <div>
+                  <strong>Name:</strong> {user.displayName || "-"}
+                </div>
+                <div>
+                  <strong>Relationship:</strong> {profile?.relationship || "-"}
+                </div>
+                <div>
+                <strong>Family:</strong>{" "}
+                {profile?.familyName
+                  ? profile.familyName
+                  : profile?.familyId
+                  ? ` ${profile.familyId}`
+                  : "-"}
+              </div>
+              </div>
+              <div
+                style={{
+                  marginTop: 16,
+                  display: "flex",
+                  gap: 10,
+                  flexWrap: "wrap",
+                }}
+              >
+                <Link href="/family" className="opennest-button opennest-button-secondary">
+                  Family Settings
+                </Link>
+                <button
+                  type="button"
+                  onClick={logOut}
+                  className="opennest-button opennest-button-secondary"
+                >
+                  Log out
+                </button>
+              </div>
+            </DashboardCard>
           </div>
         </div>
       </div>
 
-      <style jsx>{`
-        .cloud-1 {
-          animation: driftCloud1 18s ease-in-out infinite;
-        }
+      <BottomNav />
+    </div>
+  );
+}
 
-        .cloud-2 {
-          animation: driftCloud2 22s ease-in-out infinite;
-        }
+function HeroHeader() {
+  return (
+    <div
+      style={{
+        display: "grid",
+        justifyItems: "center",
+        textAlign: "center",
+        marginBottom: 22,
+        paddingTop: 8,
+        background: "linear-gradient(180deg, #F6F5F0 0%, #EFEEE9 100%)" ,
+      }}
+    >
+      <img
+        src="/opennest-logo.png"
+        alt="OpenNest"
+        style={{
+          width: '8 px',
+          height: '8 px',
+          objectFit: "contain",
+          marginBottom: 12,
+          
+        }}
+      />
 
-        .cloud-3 {
-          animation: driftCloud3 20s ease-in-out infinite;
-        }
-
-        .bird-1 {
-          animation: glideBird1 12s ease-in-out infinite;
-        }
-
-        .bird-2 {
-          animation: glideBird2 16s ease-in-out infinite;
-        }
-
-        .bird-3 {
-          animation: glideBird3 14s ease-in-out infinite;
-        }
-
-        .nest-wrap {
-          animation: floatNest 5s ease-in-out infinite;
-        }
-
-        .home-card {
-          animation: breatheCard 6s ease-in-out infinite;
-        }
-
-        @keyframes driftCloud1 {
-          0%, 100% {
-            transform: translateX(0px) translateY(0px);
-          }
-          50% {
-            transform: translateX(12px) translateY(4px);
-          }
-        }
-
-        @keyframes driftCloud2 {
-          0%, 100% {
-            transform: translateX(0px) translateY(0px);
-          }
-          50% {
-            transform: translateX(-14px) translateY(6px);
-          }
-        }
-
-        @keyframes driftCloud3 {
-          0%, 100% {
-            transform: translateX(0px) translateY(0px);
-          }
-          50% {
-            transform: translateX(10px) translateY(-4px);
-          }
-        }
-
-        @keyframes glideBird1 {
-          0%, 100% {
-            transform: translateX(0px) translateY(0px) rotate(-8deg);
-          }
-          50% {
-            transform: translateX(14px) translateY(-6px) rotate(-5deg);
-          }
-        }
-
-        @keyframes glideBird2 {
-          0%, 100% {
-            transform: translateX(0px) translateY(0px) rotate(6deg);
-          }
-          50% {
-            transform: translateX(-10px) translateY(-5px) rotate(2deg);
-          }
-        }
-
-        @keyframes glideBird3 {
-          0%, 100% {
-            transform: translateX(0px) translateY(0px);
-          }
-          50% {
-            transform: translateX(8px) translateY(-4px);
-          }
-        }
-
-        @keyframes floatNest {
-          0%, 100% {
-            transform: translateY(0px);
-          }
-          50% {
-            transform: translateY(-5px);
-          }
-        }
-
-        @keyframes breatheCard {
-          0%, 100% {
-            transform: translateY(0px);
-            box-shadow: 0 20px 45px rgba(0, 0, 0, 0.12);
-          }
-          50% {
-            transform: translateY(-3px);
-            box-shadow: 0 24px 52px rgba(0, 0, 0, 0.14);
-          }
-        }
-      `}</style>
+      
+      <div
+        style={{
+          fontSize: 15,
+          lineHeight: 1.5,
+          justifyItems: "center",
+          color: "var(--on-text-soft)",
+          maxWidth: 540,
+        }}
+      >
+        A shared family space for reflection, rhythm, and the threads of daily life.
+      </div>
     </div>
   );
 }

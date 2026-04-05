@@ -1,15 +1,18 @@
 import { ReactNode } from "react";
 
-interface DashboardCardProps {
+export default function DashboardCard({
+  title,
+  children,
+  accentClass = "",
+}: {
   title: string;
   children: ReactNode;
-}
-
-export default function DashboardCard({ title, children }: DashboardCardProps) {
+  accentClass?: string;
+}) {
   return (
-    <div className="module-card">
-      <h2 className="module-section-title">{title}</h2>
-      {children}
+    <div className={`opennest-card ${accentClass}`}>
+      <div className="opennest-card-title">{title}</div>
+      <div>{children}</div>
     </div>
   );
 }

@@ -4,17 +4,12 @@ import { useMemo, useState } from "react";
 import { CalendarItem } from "@/types/calendar";
 import { getAuthorColor } from "@/lib/authorColors";
 import {
+  formatMonthTitle,
   getAuthorInitial,
   getDateKindSymbol,
   shortenTitle,
 } from "@/lib/calendarDisplay";
 import BottomSheetDayView from "@/components/BottomSheetDayView";
-
-type BlackboardCalendarProps = {
-  year: number;
-  month: number;
-  items: CalendarItem[];
-};
 
 function formatLocalDate(year: number, month: number, day: number): string {
   const mm = String(month + 1).padStart(2, "0");
@@ -26,7 +21,11 @@ export default function BlackboardCalendar({
   year,
   month,
   items,
-}: BlackboardCalendarProps) {
+}: {
+  year: number;
+  month: number;
+  items: CalendarItem[];
+}) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   const firstDay = new Date(year, month, 1);
@@ -48,7 +47,6 @@ export default function BlackboardCalendar({
   }, [items]);
 
   const selectedItems = selectedDate ? byDate.get(selectedDate) || [] : [];
-  const monthName = firstDay.toLocaleString("default", { month: "long" });
 
   return (
     <div className="min-h-screen bg-[#141414] text-[#f5f0d8] px-2 py-3 sm:px-4 sm:py-4">
@@ -56,7 +54,7 @@ export default function BlackboardCalendar({
         <div className="mb-3 flex items-center justify-between gap-2">
           <div>
             <h1 className="text-lg sm:text-2xl font-bold">
-              {monthName} {year}
+              {formatMonthTitle(year, month)}
             </h1>
             <div className="text-[10px] sm:text-xs opacity-75 mt-1">
               ▶ start · — continues · ◀ end · • single

@@ -2,8 +2,16 @@
 
 import Link from "next/link";
 import { CalendarItem } from "@/types/calendar";
+import {
+  formatHumanDate,
+  getAuthorInitial,
+  getDateKindSymbol,
+  getModuleLabel,
+  getModulePillClass,
+} from "@/lib/calendarDisplay";
+import { getAuthorColor } from "@/lib/authorColors";
 
-type Props = {
+type BottomSheetDayViewProps = {
   selectedDate: string | null;
   items: CalendarItem[];
   onClose: () => void;
@@ -13,7 +21,7 @@ export default function BottomSheetDayView({
   selectedDate,
   items,
   onClose,
-}: Props) {
+}: BottomSheetDayViewProps) {
   if (!selectedDate) return null;
 
   return (
@@ -29,7 +37,7 @@ export default function BottomSheetDayView({
           <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-[#333]">
             <div>
               <h2 className="text-base font-semibold">Entries</h2>
-              <p className="text-xs opacity-70">{selectedDate}</p>
+              <p className="text-xs opacity-70">{formatHumanDate(selectedDate)}</p>
             </div>
 
             <button type="button" onClick={onClose} className="text-sm underline">
@@ -47,21 +55,31 @@ export default function BottomSheetDayView({
                 key={item.id}
                 href={item.href}
                 onClick={onClose}
-                className="block rounded-2xl border border-[#3a3a3a] bg-[#242424] p-3 hover:bg-[#2b2b2b] transition"
+                className={`block rounded-2xl border p-3 transition hover:opacity-95 ${getAuthorColor(
+                  item.authorUid
+                )}`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="text-sm font-semibold truncate">{item.title}</div>
-                    <div className="text-xs opacity-90 mt-1">
-                      {item.type} · {item.authorName}
+                    <div className="text-sm font-semibold truncate">
+                      {getDateKindSymbol(item.dateKind)} {item.title}
                     </div>
-                    {item.meta && (
-                      <div className="text-xs opacity-75 mt-1">{item.meta}</div>
-                    )}
+                    <div className="text-xs opacity-90 mt-1">
+                      {getAuthorInitial(item.authorName)} · {item.authorName}
+                      {item.meta ? ` · ${item.meta}` : ""}
+                      {item.timeLabel ? ` · ${item.timeLabel}` : ""}
+                    </div>
                   </div>
 
-                  <div className="text-xs shrink-0 opacity-90 underline">
-                    Open
+                  <div className="shrink-0 flex flex-col items-end gap-2">
+                    <span
+                      className={`text-[10px] px-2 py-1 rounded-full border ${getModulePillClass(
+                        item.type
+                      )}`}
+                    >
+                      {getModuleLabel(item.type)}
+                    </span>
+                    <span className="text-xs underline opacity-90">Open</span>
                   </div>
                 </div>
               </Link>

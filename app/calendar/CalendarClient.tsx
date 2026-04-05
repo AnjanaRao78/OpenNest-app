@@ -4,38 +4,17 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { User } from "firebase/auth";
-import { subscribeToAuth, getUserProfile } from "@/lib/auth";
-import {
-  loadCalendarItems,
-  loadFamilyUsers,
-  CalendarFilterInput,
-} from "@/lib/calendar";
+import { getUserProfile, subscribeToAuth } from "@/lib/auth";
+import { loadCalendarItems, loadFamilyUsers } from "@/lib/calendar";
 import {
   CalendarItem,
   CalendarModuleType,
   CalendarViewType,
 } from "@/types/calendar";
-import BlackboardCalendar from "@/components/BlackboardCalendar";
 import CalendarFilters from "@/components/CalendarFilters";
+import BlackboardCalendar from "@/components/BlackboardCalendar";
 import AgendaView from "@/components/AgendaView";
 import ScheduleView from "@/components/ScheduleView";
-
-function getMonthRange(offset: number) {
-  const today = new Date();
-  const start = new Date(today.getFullYear(), today.getMonth() + offset, 1);
-  const end = new Date(today.getFullYear(), today.getMonth() + offset + 1, 0);
-
-  const year = start.getFullYear();
-  const month = start.getMonth();
-
-  const startDate = `${year}-${String(month + 1).padStart(2, "0")}-01`;
-  const endDate = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(
-    2,
-    "0"
-  )}-${String(end.getDate()).padStart(2, "0")}`;
-
-  return { year, month, startDate, endDate };
-}
 
 const defaultModules: CalendarModuleType[] = [
   "reflection",
@@ -44,20 +23,35 @@ const defaultModules: CalendarModuleType[] = [
   "reading",
 ];
 
+function getMonthRange(offset: number) {
+  const today = new Date();
+  const first = new Date(today.getFullYear(), today.getMonth() + offset, 1);
+  const last = new Date(today.getFullYear(), today.getMonth() + offset + 1, 0);
+
+  const year = first.getFullYear();
+  const month = first.getMonth();
+
+  const startDate = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+  const endDate = `${last.getFullYear()}-${String(last.getMonth() + 1).padStart(
+    2,
+    "0"
+  )}-${String(last.getDate()).padStart(2, "0")}`;
+
+  return { year, month, startDate, endDate };
+}
+
 export default function CalendarClient() {
   const searchParams = useSearchParams();
 
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<any>(null);
   const [items, setItems] = useState<CalendarItem[]>([]);
-  const [familyUsers, setFamilyUsers] = useState<
-    Array<{ uid: string; displayName: string; relationship?: string }>
-  >([]);
+  const [familyUsers, setFamilyUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [selectedUserUid, setSelectedUserUid] = useState<string | "all">("all");
   const [selectedModules, setSelectedModules] =
     useState<CalendarModuleType[]>(defaultModules);
-  const [selectedUserUid, setSelectedUserUid] = useState<string | "all">("all");
   const [selectedView, setSelectedView] = useState<CalendarViewType>("month");
 
   const requestedOffset = Number(searchParams.get("offset"));
@@ -66,7 +60,7 @@ export default function CalendarClient() {
       ? requestedOffset
       : 0;
 
-  const range = useMemo(() => getMonthRange(offset), [offset]);
+  const monthRange = useMemo(() => getMonthRange(offset), [offset]);
 
   function toggleModule(module: CalendarModuleType) {
     setSelectedModules((prev) => {
@@ -104,8 +98,7 @@ export default function CalendarClient() {
         const users = await loadFamilyUsers(userProfile.familyId);
         setFamilyUsers(users);
       } catch (error) {
-        console.error("Failed to initialize calendar:", error);
-        setItems([]);
+        console.error("Calendar init failed:", error);
       } finally {
         setLoading(false);
       }
@@ -121,20 +114,19 @@ export default function CalendarClient() {
       setLoading(true);
 
       try {
-        const filters: CalendarFilterInput = {
+        const data = await loadCalendarItems({
           familyId: profile.familyId,
           viewerUid: user.uid,
           viewerRelationship: profile.relationship,
           selectedUserUid,
           selectedModules,
-          startDate: range.startDate,
-          endDate: range.endDate,
-        };
+          startDate: monthRange.startDate,
+          endDate: monthRange.endDate,
+        });
 
-        const data = await loadCalendarItems(filters);
         setItems(data);
       } catch (error) {
-        console.error("Failed to load filtered calendar items:", error);
+        console.error("Calendar load failed:", error);
         setItems([]);
       } finally {
         setLoading(false);
@@ -142,7 +134,14 @@ export default function CalendarClient() {
     }
 
     run();
-  }, [user, profile, selectedUserUid, selectedModules, range.startDate, range.endDate]);
+  }, [
+    user,
+    profile,
+    selectedUserUid,
+    selectedModules,
+    monthRange.startDate,
+    monthRange.endDate,
+  ]);
 
   if (loading) return <div className="p-6">Loading calendar...</div>;
   if (!user || !profile) return <div className="p-6">Please sign in first.</div>;
@@ -186,8 +185,8 @@ export default function CalendarClient() {
 
       {selectedView === "month" && (
         <BlackboardCalendar
-          year={range.year}
-          month={range.month}
+          year={monthRange.year}
+          month={monthRange.month}
           items={items}
         />
       )}

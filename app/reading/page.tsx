@@ -1,23 +1,21 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { User } from "firebase/auth";
-import { getUserProfile, subscribeToAuth } from "@/lib/auth";
-import { saveReadingEntry, loadReadingByAuthor } from "@/lib/reading";
-import { collection, getDocs, query, where } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { subscribeToAuth } from "@/lib/auth";
+import { loadReadingByAuthor, saveReadingEntry } from "@/lib/reading";
 import PageHeader from "@/components/PageHeader";
 import SummaryCard from "@/components/SummaryCard";
 import DashboardCard from "@/components/DashboardCard";
-import Link from "next/link";
+import BottomNav from "@/components/BottomNav";
 
 export default function ReadingPage() {
   const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<any>(null);
-  
   const [entries, setEntries] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<"library" | "dashboard">("dashboard");
-  
+  const [activeTab, setActiveTab] = useState<"dashboard" | "library">(
+    "dashboard"
+  );
 
   const [title, setTitle] = useState("");
   const [statusValue, setStatusValue] = useState("to-read");
@@ -25,39 +23,23 @@ export default function ReadingPage() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(true); 
 
-useEffect(() => {
-  const unsub = subscribeToAuth(async (authUser) => {
-    setUser(authUser);
-    if (!authUser){
+  useEffect(() => {
+    const unsub = subscribeToAuth(async (authUser) => {
+      setUser(authUser);
+      if (!authUser) return;
 
-      setProfile(null);
-      setLoading(false);
-      return;
-    } 
-try { 
-      const userProfile = await getUserProfile(authUser.uid);
       const data = await loadReadingByAuthor(authUser.uid);
       setEntries(data);
-      setProfile(userProfile);
-    } catch (error) {
-      console.error("Failed to load user profile:", error);
-    } finally {   
-      setLoading(false);
-    } 
-    
-  });
+    });
 
-  return () => unsub();
-}, []);
+    return () => unsub();
+  }, []);
 
- async function reloadEntries(uid: string) {
-  const q = query(collection(db, "reading"), where("authorUid", "==", uid));
-  const snap = await getDocs(q);
-  const data = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-  setEntries(data);
-}
+  async function reloadEntries(uid: string) {
+    const data = await loadReadingByAuthor(uid);
+    setEntries(data);
+  }
 
   async function handleSave() {
     if (!user) {
@@ -77,7 +59,7 @@ try {
 
     try {
       await saveReadingEntry({
-        familyId: profile.familyId,
+        familyId: "demo-family-1",
         authorUid: user.uid,
         authorName: user.displayName || "Unknown",
         title,
@@ -116,26 +98,40 @@ try {
   );
 
   return (
-    <div>
-      <PageHeader title="Reading" />
+    <div className="opennest-app-shell">
+      <div className="opennest-page">
+        <PageHeader title="Reading" />
 
-      <div className="module-page">
-        <div className="module-summary-grid">
+        <div className="opennest-hero-card">
+          <div className="opennest-card-title">Your reading corner</div>
+          <div className="opennest-card-subtitle">
+            Track what you want to read, what you are reading, and what you have
+            finished — all in one calm little nook.
+          </div>
+        </div>
+
+        <div className="opennest-summary-grid">
           <SummaryCard label="Currently Reading" value={activeReads.length} />
           <SummaryCard label="Reading Queue" value={queuedReads.length} />
           <SummaryCard label="Finished" value={finishedReads.length} />
           <SummaryCard label="Library Size" value={entries.length} />
         </div>
 
-        <div className="module-tabs">
+        <div className="opennest-tabs">
           <button
-            className={`module-tab ${activeTab === "dashboard" ? "active" : ""}`}
+            type="button"
+            className={`opennest-tab ${
+              activeTab === "dashboard" ? "active" : ""
+            }`}
             onClick={() => setActiveTab("dashboard")}
           >
             Dashboard
           </button>
           <button
-            className={`module-tab ${activeTab === "library" ? "active" : ""}`}
+            type="button"
+            className={`opennest-tab ${
+              activeTab === "library" ? "active" : ""
+            }`}
             onClick={() => setActiveTab("library")}
           >
             Library
@@ -143,139 +139,188 @@ try {
         </div>
 
         {activeTab === "dashboard" ? (
-          <div className="module-grid-2">
-            <DashboardCard title="Currently Reading">
-              <div className="module-list">
-                {activeReads.length > 0 ? (
-                  activeReads.map((entry) => (
-                    <div key={entry.id} className="module-item">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <div className="module-item-title">{entry.title}</div>
-                          <div className="module-item-subtitle">
-                            Started: {entry.startDate || "-"}
-                            {entry.endDate ? ` · Ends: ${entry.endDate}` : ""}
+          <div className="opennest-module-grid">
+            <div className="opennest-section">
+              <DashboardCard
+                title="Currently Reading"
+                accentClass="opennest-module-accent-reading"
+              >
+                <div className="opennest-list">
+                  {activeReads.length > 0 ? (
+                    activeReads.map((entry) => (
+                      <div key={entry.id} className="opennest-list-card gold">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="opennest-list-title">
+                              {entry.title}
+                            </div>
+                            <div className="opennest-list-meta">
+                              Started: {entry.startDate || "-"}
+                              {entry.endDate ? ` · Ends: ${entry.endDate}` : ""}
+                            </div>
                           </div>
+
+                          <Link
+                            href={`/entry/reading/${entry.id}`}
+                            className="underline text-sm"
+                          >
+                            Open
+                          </Link>
                         </div>
-                        <Link href={`/entry/reading/${entry.id}`} className="underline text-sm">
-                          Open
-                        </Link>
+
+                        {entry.notes && (
+                          <div className="opennest-meta-grid">
+                            <div>{entry.notes}</div>
+                          </div>
+                        )}
                       </div>
-                      {entry.notes && <div className="module-meta"><p>{entry.notes}</p></div>}
+                    ))
+                  ) : (
+                    <div className="opennest-empty-state">
+                      No active reads yet.
                     </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-gray-500">No active reads.</p>
-                )}
-              </div>
-            </DashboardCard>
+                  )}
+                </div>
+              </DashboardCard>
 
-            <DashboardCard title="Reading Queue">
-              <div className="module-list">
-                {queuedReads.length > 0 ? (
-                  queuedReads.map((entry) => (
-                    <div key={entry.id} className="module-item">
-                      <div className="module-item-title">{entry.title}</div>
-                      <div className="module-item-subtitle">
-                        To Read · {entry.startDate || "-"}
+              <DashboardCard title="Reading Queue">
+                <div className="opennest-list">
+                  {queuedReads.length > 0 ? (
+                    queuedReads.map((entry) => (
+                      <div key={entry.id} className="opennest-list-card">
+                        <div className="opennest-list-title">{entry.title}</div>
+                        <div className="opennest-list-meta">
+                          To Read · {entry.startDate || "-"}
+                        </div>
                       </div>
+                    ))
+                  ) : (
+                    <div className="opennest-empty-state">
+                      No queued reads.
                     </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-gray-500">No queued reads.</p>
-                )}
-              </div>
-            </DashboardCard>
+                  )}
+                </div>
+              </DashboardCard>
 
-            <DashboardCard title="Finished Recently">
-              <div className="module-list">
-                {finishedReads.length > 0 ? (
-                  finishedReads.slice(0, 5).map((entry) => (
-                    <div key={entry.id} className="module-item">
-                      <div className="module-item-title">{entry.title}</div>
-                      <div className="module-item-subtitle">
-                        {entry.startDate || "-"} → {entry.endDate || "-"}
+              <DashboardCard title="Finished Recently">
+                <div className="opennest-list">
+                  {finishedReads.length > 0 ? (
+                    finishedReads.slice(0, 5).map((entry) => (
+                      <div key={entry.id} className="opennest-list-card">
+                        <div className="opennest-list-title">{entry.title}</div>
+                        <div className="opennest-list-meta">
+                          {entry.startDate || "-"}
+                          {entry.endDate ? ` → ${entry.endDate}` : ""}
+                        </div>
                       </div>
+                    ))
+                  ) : (
+                    <div className="opennest-empty-state">
+                      Nothing finished yet.
                     </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-gray-500">Nothing finished yet.</p>
-                )}
-              </div>
-            </DashboardCard>
+                  )}
+                </div>
+              </DashboardCard>
+            </div>
 
-            <DashboardCard title="Add to Reading List">
-              <div className="module-form">
-                <input
-                  placeholder="Book or article title"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                />
+            <div className="opennest-section">
+              <DashboardCard
+                title="Add to Reading List"
+                accentClass="opennest-module-accent-reading"
+              >
+                <div className="opennest-form">
+                  <input
+                    placeholder="Book or article title"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                  />
 
-                <select
-                  value={statusValue}
-                  onChange={(e) => setStatusValue(e.target.value)}
-                >
-                  <option value="to-read">To Read</option>
-                  <option value="reading">Reading</option>
-                  <option value="finished">Finished</option>
-                </select>
+                  <select
+                    value={statusValue}
+                    onChange={(e) => setStatusValue(e.target.value)}
+                  >
+                    <option value="to-read">To Read</option>
+                    <option value="reading">Reading</option>
+                    <option value="finished">Finished</option>
+                  </select>
 
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                />
+                  <div className="opennest-form-row-2">
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                    />
 
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                />
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                    />
+                  </div>
 
-                <textarea
-                  placeholder="Notes"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                />
+                  <textarea
+                    placeholder="Notes"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                  />
 
-                <button onClick={handleSave} className="module-button-primary">
-                  Save Reading Entry
-                </button>
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    className="opennest-button opennest-button-primary"
+                  >
+                    Save Reading Entry
+                  </button>
 
-                {message && <p className="mt-3 text-sm">{message}</p>}
-              </div>
-            </DashboardCard>
+                  {message && <div className="opennest-list-meta">{message}</div>}
+                </div>
+              </DashboardCard>
+            </div>
           </div>
         ) : (
-          <div className="module-card">
-            <h2 className="module-section-title">Reading Library</h2>
-            <div className="module-list">
+          <DashboardCard
+            title="Reading Library"
+            accentClass="opennest-module-accent-reading"
+          >
+            <div className="opennest-list">
               {entries.length > 0 ? (
                 entries.map((entry) => (
-                  <div key={entry.id} className="module-item">
+                  <div key={entry.id} className="opennest-list-card gold">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <div className="module-item-title">{entry.title}</div>
-                        <div className="module-item-subtitle">
+                        <div className="opennest-list-title">{entry.title}</div>
+                        <div className="opennest-list-meta">
                           {entry.status} · {entry.startDate || "-"}
                           {entry.endDate ? ` → ${entry.endDate}` : ""}
                         </div>
                       </div>
-                      <Link href={`/entry/reading/${entry.id}`} className="underline text-sm">
+
+                      <Link
+                        href={`/entry/reading/${entry.id}`}
+                        className="underline text-sm"
+                      >
                         Open
                       </Link>
                     </div>
-                    {entry.notes && <div className="module-meta"><p>{entry.notes}</p></div>}
+
+                    {entry.notes && (
+                      <div className="opennest-meta-grid">
+                        <div>{entry.notes}</div>
+                      </div>
+                    )}
                   </div>
                 ))
               ) : (
-                <p className="text-sm text-gray-500">No reading entries yet.</p>
+                <div className="opennest-empty-state">
+                  No reading entries yet.
+                </div>
               )}
             </div>
-          </div>
+          </DashboardCard>
         )}
       </div>
+
+      <BottomNav />
     </div>
   );
 }
