@@ -48,13 +48,15 @@ export default function HomePage() {
           return;
         }
 
+        const familyId = (userProfile as any)?.familyId;
+
         const [reading, studies, hobbies, internships, reflections] =
           await Promise.all([
             loadReadingByAuthor(authUser.uid),
             loadStudiesByAuthor(authUser.uid),
-            loadHobbiesByAuthor(authUser.uid, userProfile.familyId),
+            loadHobbiesByAuthor(authUser.uid, familyId),
             loadInternshipsByAuthor(authUser.uid),
-            loadReflections(userProfile.familyId),
+            loadReflections(familyId),
           ]);
 
         setReadingCount(reading.length);
