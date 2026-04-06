@@ -12,6 +12,7 @@ import {
   addDoc,
   collection,
 } from "firebase/firestore";
+
 import { db, getClientAuth } from "@/lib/firebase";
 import { UserProfile } from "@/types/userProfile";
 
