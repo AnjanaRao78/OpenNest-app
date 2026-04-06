@@ -27,16 +27,12 @@ const hasNextEnv =
 !!fromNextEnv.projectId &&
 !!fromNextEnv.appId;
 
-if (hasNextEnv) {
-return fromNextEnv;
-}
+if (hasNextEnv) return fromNextEnv;
 
 const rawWebConfig = process.env.FIREBASE_WEBAPP_CONFIG;
-
 if (rawWebConfig) {
 try {
 const parsed = JSON.parse(rawWebConfig) as FirebaseWebConfig;
-
 return {
 apiKey: parsed.apiKey,
 authDomain: parsed.authDomain,
