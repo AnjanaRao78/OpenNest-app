@@ -195,4 +195,4 @@ export default function CalendarClient() {
       {selectedView === "schedule" && <ScheduleView items={items} />}
     </div>
   );
-}gi
+}
