@@ -9,6 +9,7 @@ export default function FamilyPage() {
   const [joinCode, setJoinCode] = useState("");
   const [joinName, setJoinName] = useState("");
   const [result, setResult] = useState("");
+  const dynamic = "force-dynamic";
 
   async function handleCreate() {
     try {
