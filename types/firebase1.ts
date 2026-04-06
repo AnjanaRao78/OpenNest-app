@@ -1,4 +1,3 @@
-
 import { getApp, getApps, initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
@@ -26,6 +25,12 @@ if (!hasRequiredConfig) {
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
+export function getClientAuth() {
+  if (typeof window === "undefined") {
+    throw new Error("Firebase Auth is client-only.");
+  }
+  return getAuth(app);
+}
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export default app;

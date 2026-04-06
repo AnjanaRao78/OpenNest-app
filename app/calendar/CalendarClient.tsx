@@ -15,6 +15,7 @@ import CalendarFilters from "@/components/CalendarFilters";
 import BlackboardCalendar from "@/components/BlackboardCalendar";
 import AgendaView from "@/components/AgendaView";
 import ScheduleView from "@/components/ScheduleView";
+import { UserProfile } from "@/types/userProfile";
 
 const defaultModules: CalendarModuleType[] = [
   "reflection",
@@ -44,7 +45,7 @@ export default function CalendarClient() {
   const searchParams = useSearchParams();
 
   const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [items, setItems] = useState<CalendarItem[]>([]);
   const [familyUsers, setFamilyUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -85,7 +86,7 @@ export default function CalendarClient() {
       }
 
         try {
-        const userProfile = (await getUserProfile(authUser.uid)) as any;
+        const userProfile = (await getUserProfile(authUser.uid));
         setProfile(userProfile);
 
         if (!userProfile || !userProfile.familyId) {

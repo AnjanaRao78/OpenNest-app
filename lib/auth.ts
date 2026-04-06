@@ -13,6 +13,7 @@ import {
   collection,
 } from "firebase/firestore";
 import { db, getClientAuth } from "@/lib/firebase";
+import { UserProfile } from "@/types/userProfile";
 
 const provider = new GoogleAuthProvider();
 
@@ -22,7 +23,7 @@ export async function signInWithGoogle() {
   return result.user;
 }
 
-export async function getUserProfile(uid: string) {
+export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   const ref = doc(db, "users", uid);
   const snap = await getDoc(ref);
 
@@ -30,26 +31,18 @@ export async function getUserProfile(uid: string) {
 
   return {
     uid: snap.id,
-    ...snap.data(),
+    ...(snap.data() as Omit<UserProfile, "uid">),
   };
 }
 
-export async function saveUserProfile(profile: {
-  uid: string;
-  displayName: string;
-  email: string;
-  photoURL?: string;
-  familyId: string;
-  familyName?: string;
-  relationship: "parent" | "sibling" | "child";
-}) {
+export async function saveUserProfile(profile: UserProfile) {
   const ref = doc(db, "users", profile.uid);
 
   await setDoc(
     ref,
     {
       ...profile,
-      createdAt: Date.now(),
+      createdAt: profile.createdAt ?? Date.now(),
     },
     { merge: true }
   );
