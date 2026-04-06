@@ -57,16 +57,20 @@ const hasRequiredConfig =
   !!firebaseConfig.projectId &&
   !!firebaseConfig.appId;
 
-if (!hasRequiredConfig) {
-  throw new Error(
-    "Missing Firebase web config. Set NEXT_PUBLIC_FIREBASE_* or provide FIREBASE_WEBAPP_CONFIG."
-  );
+const isServer = typeof window === "undefined";
+if (!hasRequiredConfig && !isServer) {
+ throw new Error(
+   "Missing Firebase web config. Set NEXT_PUBLIC_FIREBASE_* or provide FIREBASE_WEBAPP_CONFIG."
+ );
 }
 
-const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+let app: any = null;
+if (hasRequiredConfig) {
+ app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+}
 
 export { app };
-export const db = getFirestore(app);
+export const db = app ? getFirestore(app) : null;
 
 export function getClientAuth() {
   if (typeof window === "undefined") {

@@ -1,5 +1,5 @@
 "use client";
-
+export const dynamic = "force-dynamic";
 import { useState } from "react";
 import { createFamilyGroup, joinFamilyGroup } from "@/lib/family";
 
@@ -9,7 +9,7 @@ export default function FamilyPage() {
   const [joinCode, setJoinCode] = useState("");
   const [joinName, setJoinName] = useState("");
   const [result, setResult] = useState("");
-  const dynamic = "force-dynamic";
+  
 
   async function handleCreate() {
     try {
