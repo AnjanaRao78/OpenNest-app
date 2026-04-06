@@ -3,12 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { User } from "firebase/auth";
-import { subscribeToAuth } from "@/lib/auth";
+import { subscribeToAuth, getUserProfile } from "@/lib/auth";
 import { loadReadingByAuthor, saveReadingEntry } from "@/lib/reading";
 import PageHeader from "@/components/PageHeader";
 import SummaryCard from "@/components/SummaryCard";
 import DashboardCard from "@/components/DashboardCard";
 import BottomNav from "@/components/BottomNav";
+
 
 export default function ReadingPage() {
   const [user, setUser] = useState<User | null>(null);
