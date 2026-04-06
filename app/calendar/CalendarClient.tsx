@@ -94,7 +94,6 @@ export default function CalendarClient() {
           setLoading(false);
           return;
         }
-       
         const users = await loadFamilyUsers(userProfile.familyId);
         setFamilyUsers(users);
       } catch (error) {
