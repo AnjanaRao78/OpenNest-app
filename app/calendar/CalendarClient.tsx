@@ -84,17 +84,17 @@ export default function CalendarClient() {
         return;
       }
 
-      try {
-        const userProfile = await getUserProfile(authUser.uid);
+        try {
+        const userProfile = (await getUserProfile(authUser.uid)) as any;
         setProfile(userProfile);
 
-        if (!userProfile) {
+        if (!userProfile || !userProfile.familyId) {
           setFamilyUsers([]);
           setItems([]);
           setLoading(false);
           return;
         }
-
+       
         const users = await loadFamilyUsers(userProfile.familyId);
         setFamilyUsers(users);
       } catch (error) {

@@ -12,6 +12,7 @@ import BottomNav from "@/components/BottomNav";
 
 export default function ReadingPage() {
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<any>(null);
   const [entries, setEntries] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<"dashboard" | "library">(
     "dashboard"
@@ -28,7 +29,8 @@ export default function ReadingPage() {
     const unsub = subscribeToAuth(async (authUser) => {
       setUser(authUser);
       if (!authUser) return;
-
+      const userProfile: any = await getUserProfile(authUser.uid);
+      setProfile(userProfile);
       const data = await loadReadingByAuthor(authUser.uid);
       setEntries(data);
     });
@@ -59,7 +61,7 @@ export default function ReadingPage() {
 
     try {
       await saveReadingEntry({
-        familyId: "demo-family-1",
+        familyId: profile.familyId,
         authorUid: user.uid,
         authorName: user.displayName || "Unknown",
         title,

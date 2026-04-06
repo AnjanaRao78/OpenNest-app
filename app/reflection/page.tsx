@@ -29,7 +29,7 @@ export default function ReflectionPage() {
 
       if (!authUser) return;
 
-      const userProfile = await getUserProfile(authUser.uid);
+      const userProfile: any = await getUserProfile(authUser.uid);
       setProfile(userProfile);
 
       if (!userProfile) return;
