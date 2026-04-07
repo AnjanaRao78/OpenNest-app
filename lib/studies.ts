@@ -8,7 +8,7 @@ import {
   getDoc,
   updateDoc,
 } from "firebase/firestore";
-import { db } from "@/types/firebase1";
+import { db } from "@/lib/firebase";
 import { StudiesEntry } from "@/types/studies";
 
 export async function saveStudiesEntry(entry: StudiesEntry) {
