@@ -27,12 +27,16 @@ function readFirebaseConfig(): FirebaseWebConfig {
     !!fromNextEnv.projectId &&
     !!fromNextEnv.appId;
 
-  if (hasNextEnv) return fromNextEnv;
+  if (hasNextEnv) {
+    return fromNextEnv;
+  }
 
   const rawWebConfig = process.env.FIREBASE_WEBAPP_CONFIG;
+
   if (rawWebConfig) {
     try {
       const parsed = JSON.parse(rawWebConfig) as FirebaseWebConfig;
+
       return {
         apiKey: parsed.apiKey,
         authDomain: parsed.authDomain,
@@ -57,16 +61,10 @@ const hasRequiredConfig =
   !!firebaseConfig.projectId &&
   !!firebaseConfig.appId;
 
-const isServer = typeof window === "undefined";
-if (!hasRequiredConfig && !isServer) {
- throw new Error(
-   "Missing Firebase web config. Set NEXT_PUBLIC_FIREBASE_* or provide FIREBASE_WEBAPP_CONFIG."
- );
-}
+let app: ReturnType<typeof initializeApp> | null = null;
 
-let app: any = null;
 if (hasRequiredConfig) {
- app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+  app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 }
 
 export { app };
@@ -76,5 +74,10 @@ export function getClientAuth() {
   if (typeof window === "undefined") {
     throw new Error("Firebase Auth is client-only.");
   }
+
+  if (!app) {
+    throw new Error("Firebase app is not initialized.");
+  }
+
   return getAuth(app);
 }

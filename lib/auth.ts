@@ -16,7 +16,7 @@ import {
 
 import { requireDb } from "@/lib/firestoreClient";
 import { UserProfile } from "@/types/userProfile";
-import { getClientAuth } from "@/lib/firebase";
+import {  getClientAuth } from "@/lib/firebase";
 
 const provider = new GoogleAuthProvider();
 export async function signInWithGoogle() {
