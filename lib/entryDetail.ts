@@ -1,8 +1,9 @@
 import { doc, getDoc } from "firebase/firestore";
-import { db } from "@/types/firebase1";
+import { requireDb } from "@/lib/firestoreClient";
 
 export async function loadEntryById(collectionName: string, id: string) {
-  const ref = doc(db, collectionName, id);
+  const firestore = requireDb();
+  const ref = doc(firestore, collectionName, id);
   const snap = await getDoc(ref);
 
   if (!snap.exists()) {

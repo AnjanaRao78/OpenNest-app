@@ -7,8 +7,8 @@ import {
   updateDoc,
   doc,
 } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 
+import { requireDb } from "@/lib/firestoreClient";
 function generateInviteCode(length = 6) {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let result = "";
@@ -32,8 +32,9 @@ export async function createFamilyGroup(name: string, creatorName: string) {
 }
 
 export async function joinFamilyGroup(inviteCode: string, memberName: string) {
+  const firestore = requireDb();
   const q = query(
-    collection(db, "families"),
+    collection(firestore, "families"),
     where("inviteCode", "==", inviteCode)
   );
 
@@ -48,7 +49,7 @@ export async function joinFamilyGroup(inviteCode: string, memberName: string) {
   const currentMembers = Array.isArray(data.members) ? data.members : [];
 
   if (!currentMembers.includes(memberName)) {
-    await updateDoc(doc(db, "families", familyDoc.id), {
+    await updateDoc(doc(firestore, "families", familyDoc.id), {
       members: [...currentMembers, memberName],
     });
   }

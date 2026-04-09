@@ -9,11 +9,12 @@ import {
   updateDoc,
   orderBy,
 } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { requireDb } from "@/lib/firestoreClient";
 import { HobbyEntry } from "@/types/hobbies";
 
 export async function saveHobbyEntry(entry: HobbyEntry) {
-  const docRef = await addDoc(collection(db, "hobbies"), entry);
+  const firestore = requireDb();
+  const docRef = await addDoc(collection(firestore, "hobbies"), entry);
   return docRef.id;
 }
 
@@ -21,8 +22,9 @@ export async function loadHobbiesByAuthor(
   authorUid: string,
   familyId: string
 ) {
+  const firestore = requireDb();
   const q = query(
-    collection(db, "hobbies"),
+    collection(firestore, "hobbies"),
     where("authorUid", "==", authorUid),
     where("familyId", "==", familyId),
     orderBy("startDate", "desc")
@@ -37,8 +39,9 @@ export async function loadHobbiesByAuthor(
 }
 
 export async function loadHobbiesByFamily(familyId: string) {
+  const firestore = requireDb();
   const q = query(
-    collection(db, "hobbies"),
+    collection(firestore, "hobbies"),
     where("familyId", "==", familyId),
     orderBy("startDate", "desc")
   );
@@ -52,7 +55,8 @@ export async function loadHobbiesByFamily(familyId: string) {
 }
 
 export async function loadHobbyById(id: string) {
-  const ref = doc(db, "hobbies", id);
+  const firestore = requireDb();
+  const ref = doc(firestore, "hobbies", id);
   const snap = await getDoc(ref);
 
   if (!snap.exists()) return null;
@@ -67,6 +71,7 @@ export async function updateHobbyById(
   id: string,
   updates: Partial<HobbyEntry>
 ) {
-  const ref = doc(db, "hobbies", id);
+  const firestore = requireDb();
+  const ref = doc(firestore, "hobbies", id);
   await updateDoc(ref, updates);
 }

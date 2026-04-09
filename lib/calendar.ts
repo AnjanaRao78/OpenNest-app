@@ -1,5 +1,5 @@
 import { collection, getDocs, query, where } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { requireDb } from "@/lib/firestoreClient";
 import {
   CalendarFilterInput,
   CalendarItem,
@@ -109,12 +109,13 @@ function sortCalendarItems(items: CalendarItem[]) {
 }
 
 async function loadCollectionByFamily(collectionName: string, familyId: string) {
-  const q = query(collection(db, collectionName), where("familyId", "==", familyId));
+  const firestore = requireDb();
+  const q = query(collection(firestore, collectionName), where("familyId", "==", familyId));
   const snap = await getDocs(q);
   return snap.docs.map((doc) => ({
     id: doc.id,
     ...doc.data(),
-  })) as any[];
+  }));
 }
 
 function buildStudiesItems(rows: any[], filters: CalendarFilterInput): CalendarItem[] {

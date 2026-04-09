@@ -8,16 +8,18 @@ import {
   getDoc,
   updateDoc,
 } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { requireDb } from "@/lib/firestoreClient";
 import { InternshipEntry } from "@/types/internship";
 
 export async function saveInternshipEntry(entry: InternshipEntry) {
-  const docRef = await addDoc(collection(db, "internship"), entry);
+  const firestore = requireDb();
+  const docRef = await addDoc(collection(firestore, "internship"), entry);
   return docRef.id;
 }
 
 export async function loadInternshipsByAuthor(authorUid: string) {
-  const q = query(collection(db, "internship"), where("authorUid", "==", authorUid));
+  const firestore = requireDb();
+  const q = query(collection(firestore, "internship"), where("authorUid", "==", authorUid));
   const snapshot = await getDocs(q);
 
   return snapshot.docs.map((doc) => ({
@@ -27,7 +29,8 @@ export async function loadInternshipsByAuthor(authorUid: string) {
 }
 
 export async function loadInternshipById(id: string) {
-  const ref = doc(db, "internship", id);
+  const firestore = requireDb();
+  const ref = doc(firestore, "internship", id);
   const snap = await getDoc(ref);
 
   if (!snap.exists()) return null;
@@ -42,6 +45,7 @@ export async function updateInternshipById(
   id: string,
   updates: Partial<InternshipEntry>
 ) {
-  const ref = doc(db, "internship", id);
+  const firestore = requireDb();
+  const ref = doc(firestore, "internship", id);
   await updateDoc(ref, updates);
 }

@@ -8,16 +8,18 @@ import {
   getDoc,
   updateDoc,
 } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { requireDb } from "@/lib/firestoreClient";
 import { ReflectionPost } from "@/types/reflection";
 
 export async function saveReflection(post: ReflectionPost) {
-  const docRef = await addDoc(collection(db, "reflections"), post);
+  const firestore = requireDb();
+  const docRef = await addDoc(collection(firestore, "reflections"), post);
   return docRef.id;
 }
 
 export async function loadReflections(familyId: string) {
-  const q = query(collection(db, "reflections"), where("familyId", "==", familyId));
+   const firestore = requireDb();
+  const q = query(collection(firestore, "reflections"), where("familyId", "==", familyId));
   const snapshot = await getDocs(q);
 
   return snapshot.docs.map((doc) => ({
@@ -27,7 +29,8 @@ export async function loadReflections(familyId: string) {
 }
 
 export async function loadReflectionById(id: string) {
-  const ref = doc(db, "reflections", id);
+  const firestore = requireDb();
+  const ref = doc(firestore, "reflections", id);
   const snap = await getDoc(ref);
 
   if (!snap.exists()) return null;
@@ -42,6 +45,7 @@ export async function updateReflectionById(
   id: string,
   updates: Partial<ReflectionPost>
 ) {
-  const ref = doc(db, "reflections", id);
+  const firestore = requireDb();
+  const ref = doc(firestore, "reflections", id);
   await updateDoc(ref, updates);
 }
