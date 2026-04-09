@@ -7,8 +7,8 @@ import {
   updateDoc,
   doc,
 } from "firebase/firestore";
-
 import { requireDb } from "@/lib/firestoreClient";
+
 function generateInviteCode(length = 6) {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let result = "";
@@ -21,7 +21,8 @@ function generateInviteCode(length = 6) {
 export async function createFamilyGroup(name: string, creatorName: string) {
   const inviteCode = generateInviteCode();
 
-  const docRef = await addDoc(collection(db, "families"), {
+  const firestore = requireDb();
+  const docRef = await addDoc(collection(firestore, "families"), {
     name,
     inviteCode,
     members: [creatorName],
