@@ -114,7 +114,7 @@ async function loadCollectionByFamily(collectionName: string, familyId: string) 
   const snap = await getDocs(q);
   return snap.docs.map((doc) => ({
     id: doc.id,
-    ...doc.data(),
+    ...(doc.data() as any),
   }));
 }
 
