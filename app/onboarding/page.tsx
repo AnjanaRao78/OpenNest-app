@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { User } from "firebase/auth";
 import { collection, getDocs } from "firebase/firestore";
-import { db } from "@/types/firebase1";
+import { requireDb } from "@/lib/firestoreClient";
 import {
   createFamily,
   saveUserProfile,
@@ -30,7 +30,8 @@ export default function OnboardingPage() {
 
     async function loadFamilies() {
       try {
-        const snap = await getDocs(collection(db, "families"));
+        const firestore = requireDb();
+        const snap = await getDocs(collection(firestore, "families"));
         const familyList = snap.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
