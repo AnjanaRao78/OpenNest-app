@@ -233,14 +233,18 @@ export default function HomePage() {
                 </div>
 
                 <div className="opennest-list-card gold">
-                  <div className="opennest-list-title">Feed</div>
+                  <div className="opennest-list-title">View and Reflect</div>
                   <div className="opennest-list-meta">
                     See recent family reflections and emotional signals.
                   </div>
                   <div style={{ marginTop: 12 }}>
-                    <Link href="/feed" className="underline text-sm">
-                      Open Feed
+                     <Link href="/feed" className="underline text-sm">
+                      Open-Nest Family Feed
                     </Link>
+                    <Link href="/reflection" className="underline text-sm">
+                      Write Reflection
+                    </Link>
+                   
                   </div>
                 </div>
               </div>
@@ -363,7 +367,7 @@ function HeroHeader() {
         alt="OpenNest"
         style={{
           width: '8 px',
-          height: '8 px',
+          height: '5 px',
           objectFit: "contain",
           marginBottom: 12,
           
