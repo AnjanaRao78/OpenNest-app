@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { User } from "firebase/auth";
 import { subscribeToAuth, getUserProfile, logOut } from "@/lib/auth";
 import { loadReadingByAuthor } from "@/lib/reading";
@@ -237,14 +238,13 @@ export default function HomePage() {
                   <div className="opennest-list-meta">
                     See recent family reflections and emotional signals.
                   </div>
-                  <div style={{ marginTop: 12 }}>
-                     <Link href="/feed" className="underline text-sm">
+                  <div style={{ marginTop: 12, display: "flex", gap: 8, flexDirection: "column" }}>
+                    <Link href="/feed" className="underline text-sm">
                       Open-Nest Family Feed
                     </Link>
                     <Link href="/reflection" className="underline text-sm">
                       Write Reflection
                     </Link>
-                   
                   </div>
                 </div>
               </div>
@@ -362,19 +362,18 @@ function HeroHeader() {
         background: "linear-gradient(180deg, #F6F5F0 0%, #EFEEE9 100%)" ,
       }}
     >
-      <img
+      <Image
         src="/opennest-logo.png"
         alt="OpenNest"
+        width={80} // adjust to desired width
+        height={50} // adjust to desired height
+        priority // improves LCP for critical images
         style={{
-          width: '8 px',
-          height: '5 px',
           objectFit: "contain",
           marginBottom: 12,
-          
         }}
       />
 
-      
       <div
         style={{
           fontSize: 15,

@@ -26,13 +26,6 @@ export default function BottomNav() {
       </Link>
 
       <Link
-        href="/reflection"
-        className={isActive("/reflection") ? "active" : ""}
-      >
-        Reflection
-      </Link>
-
-      <Link
         href="/studies"
         className={isActive("/studies") ? "active" : ""}
       >
