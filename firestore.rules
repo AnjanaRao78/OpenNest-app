@@ -1,0 +1,101 @@
+rules_version = '2';
+service cloud.firestore {
+match /databases/{database}/documents {
+function signedIn() {
+return request.auth != null;
+}
+function userDoc(uid) {
+return get(/databases/$(database)/documents/users/$(uid));
+}
+function currentUserDoc() {
+return userDoc(request.auth.uid);
+}
+function currentFamilyId() {
+return currentUserDoc().data.familyId;
+}
+function currentRelationship() {
+return currentUserDoc().data.relationship;
+}
+function isSelf(uid) {
+return signedIn() && request.auth.uid == uid;
+}
+function sameFamily(resourceData) {
+return signedIn()
+&& exists(/databases/$(database)/documents/users/$(request.auth.uid))
+&& resourceData.familyId == currentFamilyId();
+}
+function sameFamilyOnCreate() {
+return signedIn()
+&& exists(/databases/$(database)/documents/users/$(request.auth.uid))
+&& request.resource.data.familyId == currentFamilyId();
+}
+function isAuthor(resourceData) {
+return signedIn() && resourceData.authorUid == request.auth.uid;
+}
+function isCreatingOwnDoc() {
+return signedIn() && request.resource.data.authorUid == request.auth.uid;
+}
+function reflectionReadable(resourceData) {
+return sameFamily(resourceData) && (
+resourceData.visibility == "everyone" ||
+(resourceData.visibility == "onlyMe" && resourceData.authorUid == request.auth.uid) ||
+(resourceData.visibility == "parentsOnly" && currentRelationship() == "parent") ||
+(resourceData.visibility == "siblingOnly" && currentRelationship() == "sibling")
+);
+}
+function validRelationship(value) {
+return value in ["parent", "sibling", "child"];
+}
+function validVisibility(value) {
+return value in ["everyone", "parentsOnly", "siblingOnly", "onlyMe"];
+}
+match /users/{uid} {
+allow read: if isSelf(uid);
+allow create: if isSelf(uid)
+&& request.resource.data.familyId is string
+&& validRelationship(request.resource.data.relationship);
+allow update: if isSelf(uid)
+&& request.resource.data.familyId == resource.data.familyId
+&& validRelationship(request.resource.data.relationship);
+allow delete: if false;
+}
+
+match /families/{familyId} {
+allow read: if signedIn();
+allow create: if signedIn()
+&& request.resource.data.name is string
+&& request.resource.data.inviteCode is string;
+allow update, delete: if false;
+}
+match /hobbies/{docId} {
+allow read: if sameFamily(resource.data);
+allow create: if isCreatingOwnDoc() && sameFamilyOnCreate();
+allow update, delete: if sameFamily(resource.data) && isAuthor(resource.data);
+}
+match /reading/{docId} {
+allow read: if sameFamily(resource.data);
+allow create: if isCreatingOwnDoc() && sameFamilyOnCreate();
+allow update, delete: if sameFamily(resource.data) && isAuthor(resource.data);
+}
+match /studies/{docId} {
+allow read: if sameFamily(resource.data);
+allow create: if isCreatingOwnDoc() && sameFamilyOnCreate();
+allow update, delete: if sameFamily(resource.data) && isAuthor(resource.data);
+}
+match /internship/{docId} {
+allow read: if sameFamily(resource.data);
+allow create: if isCreatingOwnDoc() && sameFamilyOnCreate();
+allow update, delete: if sameFamily(resource.data) && isAuthor(resource.data);
+}
+match /reflections/{docId} {
+allow read: if reflectionReadable(resource.data);
+allow create: if isCreatingOwnDoc()
+&& sameFamilyOnCreate()
+&& validVisibility(request.resource.data.visibility);
+allow update: if sameFamily(resource.data)
+&& isAuthor(resource.data)
+&& validVisibility(request.resource.data.visibility);
+allow delete: if sameFamily(resource.data) && isAuthor(resource.data);
+}
+}
+}
