@@ -17,15 +17,22 @@ export async function saveReadingEntry(entry: ReadingEntry) {
   return docRef.id;
 }
 
-export async function loadReadingByAuthor(authorUid: string) {
-  const firestore = requireDb();
-  const q = query(collection(firestore, "reading"), where("authorUid", "==", authorUid));
-  const snapshot = await getDocs(q);
 
-  return snapshot.docs.map((docSnap) => ({
-    id: docSnap.id,
-    ...docSnap.data(),
-  })) as ReadingEntry[];
+export async function loadReadingByAuthor(uid: string, familyId: string) {
+  const firestore = requireDb();
+
+  const q = query(
+    collection(firestore, "reading"),
+    where("authorUid", "==", uid),
+    where("familyId", "==", familyId)
+  );
+
+  const snap = await getDocs(q);
+
+  return snap.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  }));
 }
 
 export async function loadReadingByFamily(familyId: string) {

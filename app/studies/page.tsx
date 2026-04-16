@@ -44,7 +44,13 @@ export default function StudiesPage() {
       const userProfile = await getUserProfile(authUser.uid);
       setProfile(userProfile);
 
-      const studyData = await loadStudiesByAuthor(authUser.uid);
+      // guard against null profile or missing familyId
+      if (!userProfile || !userProfile.familyId) {
+        setCourses([]);
+        return;
+      }
+
+      const studyData = await loadStudiesByAuthor(authUser.uid, userProfile.familyId);
       setCourses(studyData);
     });
 
@@ -52,7 +58,9 @@ export default function StudiesPage() {
   }, []);
 
   async function reloadCourses(uid: string) {
-    const studyData = await loadStudiesByAuthor(uid);
+    // use the component state profile (not the local variable from useEffect)
+    if (!profile || !profile.familyId) return;
+    const studyData = await loadStudiesByAuthor(uid, profile.familyId);
     setCourses(studyData);
   }
 
@@ -143,7 +151,7 @@ export default function StudiesPage() {
   return (
     <div className="opennest-app-shell">
       <div className="opennest-page">
-        <PageHeader title="Studies" />
+        <PageHeader title="Classes" />
 
         <div className="opennest-hero-card">
           <div className="opennest-card-title">Your academic planner</div>

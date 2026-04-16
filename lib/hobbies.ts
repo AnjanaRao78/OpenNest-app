@@ -18,25 +18,23 @@ export async function saveHobbyEntry(entry: HobbyEntry) {
   return docRef.id;
 }
 
-export async function loadHobbiesByAuthor(
-  authorUid: string,
-  familyId: string
-) {
+export async function loadHobbiesByAuthor(uid: string, familyId: string) {
   const firestore = requireDb();
+
   const q = query(
     collection(firestore, "hobbies"),
-    where("authorUid", "==", authorUid),
-    where("familyId", "==", familyId),
-    orderBy("startDate", "desc")
+    where("authorUid", "==", uid),
+    where("familyId", "==", familyId)
   );
 
-  const snapshot = await getDocs(q);
+  const snap = await getDocs(q);
 
-  return snapshot.docs.map((docSnap) => ({
-    id: docSnap.id,
-    ...docSnap.data(),
-  })) as unknown as HobbyEntry[];
+  return snap.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  }));
 }
+
 
 export async function loadHobbiesByFamily(familyId: string) {
   const firestore = requireDb();

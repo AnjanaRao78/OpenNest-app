@@ -11,7 +11,8 @@ service cloud.firestore {
     }
 
     function hasFamily() {
-      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid));
     }
 
     function currentUser() {
@@ -31,26 +32,111 @@ service cloud.firestore {
     }
 
     function isAuthor(resourceData) {
-      return resourceData.authorUid == request.auth.uid;
+      return signedIn() && resourceData.authorUid == request.auth.uid;
     }
 
     function isCreatingOwnDoc() {
-      return request.resource.data.authorUid == request.auth.uid;
+      return signedIn() && request.resource.data.authorUid == request.auth.uid;
     }
 
-    // USERS
+    function validRelationship(value) {
+      return value in ["parent", "sibling", "child"];
+    }
+
+    function validVisibility(value) {
+      return value in ["everyone", "parentsOnly", "siblingOnly", "onlyMe"];
+    }
+
     match /users/{uid} {
-      allow read, write: if isOwner(uid);
+      allow read: if isOwner(uid);
+
+      allow create: if isOwner(uid)
+        && request.resource.data.familyId is string
+        && validRelationship(request.resource.data.relationship);
+
+      allow update: if isOwner(uid)
+        && request.resource.data.familyId is string
+        && validRelationship(request.resource.data.relationship)
+        && (
+          request.resource.data.familyId == resource.data.familyId
+          || !(resource.data.familyId is string)
+        );
+
+      allow delete: if false;
     }
 
-    // GENERIC FAMILY-BASED MODULES
-    match /{collection}/{docId} {
+    match /familyInvites/{inviteId} {
+      allow read: if signedIn()
+        && resource.data.email == request.auth.token.email;
+
+      allow create: if signedIn()
+        && request.resource.data.familyId is string
+        && request.resource.data.familyName is string
+        && request.resource.data.email is string
+        && request.resource.data.status in ["pending", "accepted"];
+
+      allow update: if signedIn()
+        && (
+          resource.data.email == request.auth.token.email ||
+          resource.data.invitedByUid == request.auth.uid
+        );
+
+      allow delete: if false;
+    }
+
+    match /families/{familyId} {
+      allow read: if signedIn();
+
+      allow create: if signedIn()
+        && request.resource.data.name is string
+        && request.resource.data.inviteCode is string;
+
+      allow update: if signedIn();
+
+      allow delete: if false;
+    }
+
+    match /hobbies/{docId} {
       allow read: if sameFamily(resource.data);
+      allow create: if isCreatingOwnDoc() && sameFamilyOnCreate();
+      allow update, delete: if sameFamily(resource.data) && isAuthor(resource.data);
+    }
+
+    match /reading/{docId} {
+      allow read: if sameFamily(resource.data);
+      allow create: if isCreatingOwnDoc() && sameFamilyOnCreate();
+      allow update, delete: if sameFamily(resource.data) && isAuthor(resource.data);
+    }
+
+    match /studies/{docId} {
+      allow read: if sameFamily(resource.data);
+      allow create: if isCreatingOwnDoc() && sameFamilyOnCreate();
+      allow update, delete: if sameFamily(resource.data) && isAuthor(resource.data);
+    }
+
+    match /internship/{docId} {
+      allow read: if sameFamily(resource.data);
+      allow create: if isCreatingOwnDoc() && sameFamilyOnCreate();
+      allow update, delete: if sameFamily(resource.data) && isAuthor(resource.data);
+    }
+
+    match /reflections/{docId} {
+      allow read: if sameFamily(resource.data) && (
+        resource.data.visibility == "everyone" ||
+        (resource.data.visibility == "onlyMe" && resource.data.authorUid == request.auth.uid) ||
+        (resource.data.visibility == "parentsOnly" && currentUser().relationship == "parent") ||
+        (resource.data.visibility == "siblingOnly" && currentUser().relationship == "sibling")
+      );
 
       allow create: if isCreatingOwnDoc()
-        && sameFamilyOnCreate();
+        && sameFamilyOnCreate()
+        && validVisibility(request.resource.data.visibility);
 
-      allow update, delete: if sameFamily(resource.data)
+      allow update: if sameFamily(resource.data)
+        && isAuthor(resource.data)
+        && validVisibility(request.resource.data.visibility);
+
+      allow delete: if sameFamily(resource.data)
         && isAuthor(resource.data);
     }
   }

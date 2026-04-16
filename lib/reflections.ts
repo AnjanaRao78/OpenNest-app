@@ -17,15 +17,49 @@ export async function saveReflection(post: ReflectionPost) {
   return docRef.id;
 }
 
-export async function loadReflections(familyId: string) {
-   const firestore = requireDb();
-  const q = query(collection(firestore, "reflections"), where("familyId", "==", familyId));
-  const snapshot = await getDocs(q);
+export async function loadReflectionsForHome(
+  familyId: string,
+  uid: string,
+  relationship: "parent" | "sibling" | "child"
+) {
+  const firestore = requireDb();
 
-  return snapshot.docs.map((doc) => ({
+  const visibilityValues =
+    relationship === "parent"
+      ? ["everyone", "parentsOnly"]
+      : relationship === "sibling"
+      ? ["everyone", "siblingOnly"]
+      : ["everyone"];
+
+  const promises = visibilityValues.map(async (visibility) => {
+    const q = query(
+      collection(firestore, "reflections"),
+      where("familyId", "==", familyId),
+      where("visibility", "==", visibility)
+    );
+
+    const snap = await getDocs(q);
+    return snap.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+  });
+
+  const ownOnlyMeQuery = query(
+    collection(firestore, "reflections"),
+    where("familyId", "==", familyId),
+    where("authorUid", "==", uid),
+    where("visibility", "==", "onlyMe")
+  );
+
+  const ownOnlyMeSnap = await getDocs(ownOnlyMeQuery);
+  const ownOnlyMe = ownOnlyMeSnap.docs.map((doc) => ({
     id: doc.id,
     ...doc.data(),
-  })) as ReflectionPost[];
+  }));
+
+  const grouped = await Promise.all(promises);
+  return [...grouped.flat(), ...ownOnlyMe];
 }
 
 export async function loadReflectionById(id: string) {

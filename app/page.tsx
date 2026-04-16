@@ -1,22 +1,37 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { User } from "firebase/auth";
 import { subscribeToAuth, getUserProfile, logOut } from "@/lib/auth";
 import { loadReadingByAuthor } from "@/lib/reading";
 import { loadStudiesByAuthor } from "@/lib/studies";
 import { loadHobbiesByAuthor } from "@/lib/hobbies";
 import { loadInternshipsByAuthor } from "@/lib/internship";
-import { loadReflections } from "@/lib/reflections";
+import { loadReflectionsForHome } from "@/lib/reflections";
 import SummaryCard from "@/components/SummaryCard";
 import DashboardCard from "@/components/DashboardCard";
 import BottomNav from "@/components/BottomNav";
 
+export const dynamic = "force-dynamic";
+
+type UserProfile = {
+  uid: string;
+  displayName: string;
+  email: string;
+  photoURL?: string;
+  familyId: string;
+  familyName?: string;
+  relationship: "parent" | "sibling" | "child";
+};
+
 export default function HomePage() {
+  const router = useRouter();
+
   const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [readingCount, setReadingCount] = useState(0);
@@ -41,30 +56,68 @@ export default function HomePage() {
       }
 
       try {
-        const userProfile = await getUserProfile(authUser.uid);
+        const userProfile = (await getUserProfile(authUser.uid)) as UserProfile | null;
         setProfile(userProfile);
 
-        if (!userProfile) {
+        const hasCompleteProfile =
+          !!userProfile?.familyId && !!userProfile?.relationship;
+
+        if (!hasCompleteProfile) {
+          setReadingCount(0);
+          setStudiesCount(0);
+          setHobbiesCount(0);
+          setInternshipCount(0);
+          setFamilyReflectionCount(0);
           setLoading(false);
           return;
         }
 
-        const familyId = (userProfile as any)?.familyId;
+        const familyId = userProfile.familyId;
 
-        const [reading, studies, hobbies, internships, reflections] =
-          await Promise.all([
-            loadReadingByAuthor(authUser.uid),
-            loadStudiesByAuthor(authUser.uid),
+        const results = await Promise.allSettled([
+            loadReadingByAuthor(authUser.uid, familyId),
+            loadStudiesByAuthor(authUser.uid, familyId),
             loadHobbiesByAuthor(authUser.uid, familyId),
-            loadInternshipsByAuthor(authUser.uid),
-            loadReflections(familyId),
-          ]);
+            loadInternshipsByAuthor(authUser.uid, familyId),
+            loadReflectionsForHome(familyId, authUser.uid, userProfile.relationship),
+  ]);
 
-        setReadingCount(reading.length);
-        setStudiesCount(studies.length);
-        setHobbiesCount(hobbies.length);
-        setInternshipCount(internships.length);
-        setFamilyReflectionCount(reflections.length);
+  const [readingRes, studiesRes, hobbiesRes, internshipsRes, reflectionsRes] = results;
+
+  if (readingRes.status === "fulfilled") {
+    setReadingCount(readingRes.value.length);
+  } else {
+    console.error("READING failed:", readingRes.reason);
+    setReadingCount(0);
+  }
+
+  if (studiesRes.status === "fulfilled") {
+    setStudiesCount(studiesRes.value.length);
+  } else {
+    console.error("STUDIES failed:", studiesRes.reason);
+    setStudiesCount(0);
+  }
+
+if (hobbiesRes.status === "fulfilled") {
+  setHobbiesCount(hobbiesRes.value.length);
+} else {
+  console.error("HOBBIES failed:", hobbiesRes.reason);
+  setHobbiesCount(0);
+}
+
+if (internshipsRes.status === "fulfilled") {
+  setInternshipCount(internshipsRes.value.length);
+} else {
+  console.error("INTERNSHIP failed:", internshipsRes.reason);
+  setInternshipCount(0);
+}
+
+if (reflectionsRes.status === "fulfilled") {
+  setFamilyReflectionCount(reflectionsRes.value.length);
+} else {
+  console.error("REFLECTIONS failed:", reflectionsRes.reason);
+  setFamilyReflectionCount(0);
+}
       } catch (error) {
         console.error("Failed to load home dashboard:", error);
       } finally {
@@ -74,6 +127,16 @@ export default function HomePage() {
 
     return () => unsub();
   }, []);
+
+  useEffect(() => {
+    if (
+      user &&
+      !loading &&
+      (!profile || !profile.familyId || !profile.relationship)
+    ) {
+      router.replace("/onboarding");
+    }
+  }, [user, loading, profile, router]);
 
   const greeting = useMemo(() => {
     if (!user?.displayName) return "Welcome";
@@ -105,92 +168,67 @@ export default function HomePage() {
               Stay close, even when life stretches the map
             </div>
             <div className="opennest-card-subtitle">
-              OpenNest is a shared family space for reflections, courses, reading,
-              routines, milestones, and the quiet details that help people feel
-              near each other.
+              OpenNest is a shared family space for reflections, courses,
+              reading, routines, milestones, and the quiet details that help
+              people feel near each other.
             </div>
           </div>
 
-          <div className="opennest-section">
-            <DashboardCard title="Get started">
-              <div className="opennest-list">
-                <div className="opennest-list-card teal">
-                  <div className="opennest-list-title">Enter your family space</div>
-                  <div className="opennest-list-meta">
-                    Sign in, choose your family, and begin sharing life in a more
-                    structured and thoughtful way.
-                  </div>
-                  <div style={{ marginTop: 14 }}>
-                    <Link href="/login" className="opennest-button opennest-button-primary">
-                      Go to Login
-                    </Link>
-                  </div>
+          <DashboardCard title="Get started">
+            <div className="opennest-list">
+              <div className="opennest-list-card teal">
+                <div className="opennest-list-title">Enter your family space</div>
+                <div className="opennest-list-meta">
+                  Sign in, then join a family or create one.
                 </div>
-
-                <div className="opennest-list-card gold">
-                  <div className="opennest-list-title">Explore the calendar</div>
-                  <div className="opennest-list-meta">
-                    View family schedules one module at a time with designs tailored
-                    for courses, reading, internships, and reflections.
-                  </div>
-                  <div style={{ marginTop: 14 }}>
-                    <Link href="/calendar" className="opennest-button opennest-button-secondary">
-                      Open Family Calendar
-                    </Link>
-                  </div>
+                <div style={{ marginTop: 14 }}>
+                  <Link
+                    href="/login"
+                    className="opennest-button opennest-button-primary"
+                  >
+                    Go to Login
+                  </Link>
                 </div>
               </div>
-            </DashboardCard>
-          </div>
+
+              <div className="opennest-list-card gold">
+                <div className="opennest-list-title">Explore the calendar</div>
+                <div className="opennest-list-meta">
+                  View family schedules one module at a time with designs
+                  tailored for courses, reading, internships, and reflections.
+                </div>
+                <div style={{ marginTop: 14 }}>
+                  <Link
+                    href="/calendar"
+                    className="opennest-button opennest-button-secondary"
+                  >
+                    Open Family Calendar
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </DashboardCard>
         </div>
       </div>
     );
   }
 
-  if (user && !profile) {
+  if (user && (!profile || !profile.familyId || !profile.relationship)) {
     return (
       <div className="opennest-app-shell">
         <div className="opennest-page">
           <HeroHeader />
-
           <div className="opennest-hero-card" style={{ marginBottom: 18 }}>
             <div className="opennest-card-title">{greeting}</div>
             <div className="opennest-card-subtitle">
-              Your account is ready. Your family setup is the next step.
+              Redirecting you to family setup...
             </div>
           </div>
-
-          <DashboardCard title="Complete setup">
-            <div className="opennest-list">
-              <div className="opennest-list-card teal">
-                <div className="opennest-list-title">Choose or create your family</div>
-                <div className="opennest-list-meta">
-                  Set your family group and relationship so OpenNest can show the
-                  right shared space and visibility.
-                </div>
-
-                <div
-                  style={{
-                    marginTop: 14,
-                    display: "flex",
-                    gap: 10,
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <Link href="/family" className="opennest-button opennest-button-primary">
-                    Family Setup
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={logOut}
-                    className="opennest-button opennest-button-secondary"
-                  >
-                    Log out
-                  </button>
-                </div>
-              </div>
+          <div className="opennest-card">
+            <div className="opennest-card-subtitle">
+              Your profile needs a family and relationship before Home can load.
             </div>
-          </DashboardCard>
+          </div>
         </div>
       </div>
     );
@@ -238,7 +276,14 @@ export default function HomePage() {
                   <div className="opennest-list-meta">
                     See recent family reflections and emotional signals.
                   </div>
-                  <div style={{ marginTop: 12, display: "flex", gap: 8, flexDirection: "column" }}>
+                  <div
+                    style={{
+                      marginTop: 12,
+                      display: "flex",
+                      gap: 8,
+                      flexDirection: "column",
+                    }}
+                  >
                     <Link href="/feed" className="underline text-sm">
                       Open-Nest Family Feed
                     </Link>
@@ -313,14 +358,15 @@ export default function HomePage() {
                   <strong>Relationship:</strong> {profile?.relationship || "-"}
                 </div>
                 <div>
-                <strong>Family:</strong>{" "}
-                {profile?.familyName
-                  ? profile.familyName
-                  : profile?.familyId
-                  ? ` ${profile.familyId}`
-                  : "-"}
+                  <strong>Family:</strong>{" "}
+                  {profile?.familyName
+                    ? profile.familyName
+                    : profile?.familyId
+                    ? `${profile.familyId}`
+                    : "-"}
+                </div>
               </div>
-              </div>
+
               <div
                 style={{
                   marginTop: 16,
@@ -329,7 +375,10 @@ export default function HomePage() {
                   flexWrap: "wrap",
                 }}
               >
-                <Link href="/family" className="opennest-button opennest-button-secondary">
+                <Link
+                  href="/onboarding"
+                  className="opennest-button opennest-button-secondary"
+                >
                   Family Settings
                 </Link>
                 <button
@@ -359,15 +408,15 @@ function HeroHeader() {
         textAlign: "center",
         marginBottom: 22,
         paddingTop: 8,
-        background: "linear-gradient(180deg, #F6F5F0 0%, #EFEEE9 100%)" ,
+        background: "linear-gradient(180deg, #F6F5F0 0%, #EFEEE9 100%)",
       }}
     >
       <Image
         src="/opennest-logo.png"
         alt="OpenNest"
-        width={80} // adjust to desired width
-        height={50} // adjust to desired height
-        priority // improves LCP for critical images
+        width={80}
+        height={50}
+        priority
         style={{
           objectFit: "contain",
           marginBottom: 12,
@@ -383,7 +432,8 @@ function HeroHeader() {
           maxWidth: 540,
         }}
       >
-        A shared family space for reflection, rhythm, and the threads of daily life.
+        A shared family space for reflection, rhythm, and the threads of daily
+        life.
       </div>
     </div>
   );

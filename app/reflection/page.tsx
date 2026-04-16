@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { User } from "firebase/auth";
 import { subscribeToAuth, getUserProfile } from "@/lib/auth";
-import { loadReflections, saveReflection } from "@/lib/reflections";
+import { loadReflectionsForHome, saveReflection } from "@/lib/reflections";
 import PageHeader from "@/components/PageHeader";
 import SummaryCard from "@/components/SummaryCard";
 import DashboardCard from "@/components/DashboardCard";
@@ -35,7 +35,7 @@ export default function ReflectionPage() {
 
       if (!userProfile) return;
 
-      const data = await loadReflections(userProfile.familyId);
+      const data = await loadReflectionsForHome(userProfile.familyId, authUser.uid, userProfile.relationship);
       setEntries(data);
     });
 
@@ -43,7 +43,7 @@ export default function ReflectionPage() {
   }, []);
 
   async function reloadEntries(familyId: string) {
-    const data = await loadReflections(familyId);
+    const data = await loadReflectionsForHome(familyId, user?.uid || "", profile.relationship);
     setEntries(data);
   }
 

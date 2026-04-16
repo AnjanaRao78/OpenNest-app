@@ -38,7 +38,7 @@ export default function InternshipPage() {
       const userProfile = await getUserProfile(authUser.uid);
       setProfile(userProfile);
 
-      const data = await loadInternshipsByAuthor(authUser.uid);
+      const data = await loadInternshipsByAuthor(authUser.uid, profile.familyId);
       setEntries(data);
     });
 
@@ -46,7 +46,7 @@ export default function InternshipPage() {
   }, []);
 
   async function reloadEntries(uid: string) {
-    const data = await loadInternshipsByAuthor(uid);
+    const data = await loadInternshipsByAuthor(uid, profile.familyId);
     setEntries(data);
   }
 

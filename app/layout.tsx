@@ -1,4 +1,5 @@
-import "./globals.css";
+
+import "./globals.css"
 import "@/styles/moduleDashboard.css";
 import "@/styles/opennest-theme.css";
 import type { Metadata } from "next";

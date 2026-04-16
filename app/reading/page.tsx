@@ -33,7 +33,7 @@ export default function ReadingPage() {
       if (!authUser) return;
       const userProfile: any = await getUserProfile(authUser.uid);
       setProfile(userProfile);
-      const data = await loadReadingByAuthor(authUser.uid);
+      const data = await loadReadingByAuthor(authUser.uid, profile.familyId);
       setEntries(data);
     });
 
@@ -41,7 +41,7 @@ export default function ReadingPage() {
   }, []);
 
   async function reloadEntries(uid: string) {
-    const data = await loadReadingByAuthor(uid);
+    const data = await loadReadingByAuthor(uid, profile.familyId);
     setEntries(data);
   }
 

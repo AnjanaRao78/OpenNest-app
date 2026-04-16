@@ -17,15 +17,22 @@ export async function saveInternshipEntry(entry: InternshipEntry) {
   return docRef.id;
 }
 
-export async function loadInternshipsByAuthor(authorUid: string) {
-  const firestore = requireDb();
-  const q = query(collection(firestore, "internship"), where("authorUid", "==", authorUid));
-  const snapshot = await getDocs(q);
 
-  return snapshot.docs.map((doc) => ({
+export async function loadInternshipsByAuthor(uid: string, familyId: string) {
+  const firestore = requireDb();
+
+  const q = query(
+    collection(firestore, "internship"),
+    where("authorUid", "==", uid),
+    where("familyId", "==", familyId)
+  );
+
+  const snap = await getDocs(q);
+
+  return snap.docs.map((doc) => ({
     id: doc.id,
     ...doc.data(),
-  })) as InternshipEntry[];
+  }));
 }
 
 export async function loadInternshipById(id: string) {

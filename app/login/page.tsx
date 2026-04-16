@@ -1,32 +1,47 @@
 "use client";
-export const dynamic = "force-dynamic";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { signInWithGoogle, getUserProfile } from "@/lib/auth";
+import Image from "next/image";
 import PageHeader from "@/components/PageHeader";
+import { signInWithGoogle, getUserProfile } from "@/lib/auth";
+
+export const dynamic = "force-dynamic";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState("");
 
   async function handleGoogleSignIn() {
     try {
       setLoading(true);
-      setStatus("");
+      setStatus("Signing in...");
 
       const user = await signInWithGoogle();
+      setStatus("Checking profile...");
+
       const profile = await getUserProfile(user.uid);
 
-      if (profile) {
-        router.push("/");
-      } else {
-        router.push("/family");
+      if (!profile?.familyId || !profile?.relationship) {
+        setStatus("Redirecting to family setup...");
+        router.replace("/onboarding");
+        return;
       }
-    } catch (error: any) {
-      console.error("Google login failed:", error);
-      setStatus(error?.message || "Sign-in failed.");
+
+      setStatus("Opening home...");
+      router.replace("/");
+    } catch (error: unknown) {
+      console.error("Google sign-in failed:", error);
+
+      const message =
+        typeof error === "string"
+          ? error
+          : error instanceof Error
+          ? error.message
+          : "Sign-in failed.";
+
+      setStatus(message);
     } finally {
       setLoading(false);
     }
@@ -37,58 +52,78 @@ export default function LoginPage() {
       <div className="opennest-page">
         <PageHeader title="Welcome" />
 
-        <div className="opennest-hero-card" style={{ marginBottom: 16 }}>
-          <div className="opennest-card-title">A shared space for family life</div>
-          <div className="opennest-card-subtitle">
-            OpenNest helps families stay close through reflections, studies,
-            reading, routines, milestones, and the gentle texture of daily life.
+        <div
+          style={{
+            display: "grid",
+            justifyItems: "center",
+            textAlign: "center",
+            marginBottom: 22,
+            paddingTop: 8,
+          }}
+        >
+          <Image
+            src="/opennest-logo.png"
+            alt="OpenNest"
+            width={180}
+            height={60}
+            style={{
+              objectFit: "contain",
+              marginBottom: 12,
+            }}
+          />
+
+          <div
+            style={{
+              fontSize: 30,
+              fontWeight: 700,
+              letterSpacing: "-0.03em",
+              color: "var(--on-text)",
+              lineHeight: 1.05,
+              marginBottom: 8,
+            }}
+          >
+            OpenNest
+          </div>
+
+          <div
+            style={{
+              fontSize: 15,
+              lineHeight: 1.5,
+              color: "var(--on-text-soft)",
+              maxWidth: 540,
+            }}
+          >
+            A shared family space for reflection, rhythm, and the threads of daily life.
           </div>
         </div>
 
-        <div
-          className="opennest-card"
-          style={{
-            padding: 20,
-            display: "grid",
-            gap: 16,
-          }}
-        >
-          <div>
-            <div className="opennest-card-title">Sign in with Gmail</div>
-            <div className="opennest-card-subtitle">
-              Join your family space, choose your role, and step into your
-              shared calendar and updates.
-            </div>
+        <div className="opennest-hero-card" style={{ marginBottom: 18 }}>
+          <div className="opennest-card-title">
+            Stay close, even when life stretches the map
           </div>
-
-          <button
-            type="button"
-            onClick={handleGoogleSignIn}
-            disabled={loading}
-            className="opennest-button opennest-button-primary"
-            style={{ width: "100%" }}
-          >
-            {loading ? "Signing in..." : "Continue with Gmail"}
-          </button>
-
           <div className="opennest-card-subtitle">
-            Built for families living apart, thinking together.
+            Sign in to enter your family space. If your family and relationship
+            are not set yet, OpenNest will guide you there first.
           </div>
+        </div>
 
-          {status && (
-            <div
-              style={{
-                border: "1px solid #f0d2cc",
-                background: "#fff5f2",
-                color: "#8a4f45",
-                borderRadius: 16,
-                padding: 12,
-                fontSize: 14,
-              }}
+        <div className="opennest-card">
+          <div className="opennest-form">
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              disabled={loading}
+              className="opennest-button opennest-button-primary"
             >
-              {status}
+              {loading ? "Signing in..." : "Continue with Gmail"}
+            </button>
+
+            <div className="opennest-list-meta">
+              Login → Family Setup → Home
             </div>
-          )}
+
+            {status && <div className="opennest-list-meta">{status}</div>}
+          </div>
         </div>
       </div>
     </div>

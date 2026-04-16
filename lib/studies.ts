@@ -17,15 +17,22 @@ export async function saveStudiesEntry(entry: StudiesEntry) {
   return docRef.id;
 }
 
-export async function loadStudiesByAuthor(authorUid: string) {
-  const firestore = requireDb();
-  const q = query(collection(firestore, "studies"), where("authorUid", "==", authorUid));
-  const snapshot = await getDocs(q);
 
-  return snapshot.docs.map((doc) => ({
+export async function loadStudiesByAuthor(uid: string, familyId: string) {
+  const firestore = requireDb();
+
+  const q = query(
+    collection(firestore, "studies"),
+    where("authorUid", "==", uid),
+    where("familyId", "==", familyId)
+  );
+
+  const snap = await getDocs(q);
+
+  return snap.docs.map((doc) => ({
     id: doc.id,
     ...doc.data(),
-  })) as StudiesEntry[];
+  }));
 }
 
 export async function loadStudyById(id: string) {
