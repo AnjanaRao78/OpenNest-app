@@ -1,8 +1,8 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { User } from "firebase/auth";
 import { subscribeToAuth, getUserProfile, logOut } from "@/lib/auth";
@@ -11,34 +11,30 @@ import { loadStudiesByAuthor } from "@/lib/studies";
 import { loadHobbiesByAuthor } from "@/lib/hobbies";
 import { loadInternshipsByAuthor } from "@/lib/internship";
 import { loadReflectionsForHome } from "@/lib/reflections";
-import SummaryCard from "@/components/SummaryCard";
-import DashboardCard from "@/components/DashboardCard";
 import BottomNav from "@/components/BottomNav";
 
 export const dynamic = "force-dynamic";
 
-type UserProfile = {
-  uid: string;
-  displayName: string;
-  email: string;
-  photoURL?: string;
-  familyId: string;
-  familyName?: string;
-  relationship: "parent" | "sibling" | "child";
+type HomeTile = {
+  key: string;
+  label: string;
+  href: string;
+  image: string;
+  count: number;
 };
 
 export default function HomePage() {
   const router = useRouter();
 
   const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   const [readingCount, setReadingCount] = useState(0);
   const [studiesCount, setStudiesCount] = useState(0);
   const [hobbiesCount, setHobbiesCount] = useState(0);
   const [internshipCount, setInternshipCount] = useState(0);
-  const [familyReflectionCount, setFamilyReflectionCount] = useState(0);
+  const [reflectionCount, setReflectionCount] = useState(0);
 
   useEffect(() => {
     const unsub = subscribeToAuth(async (authUser) => {
@@ -50,74 +46,48 @@ export default function HomePage() {
         setStudiesCount(0);
         setHobbiesCount(0);
         setInternshipCount(0);
-        setFamilyReflectionCount(0);
+        setReflectionCount(0);
         setLoading(false);
         return;
       }
 
       try {
-        const userProfile = (await getUserProfile(authUser.uid)) as UserProfile | null;
+        const userProfile = await getUserProfile(authUser.uid);
         setProfile(userProfile);
 
+        if (!userProfile) {
+          setLoading(false);
+          return;
+        }
+
         const hasCompleteProfile =
-          !!userProfile?.familyId && !!userProfile?.relationship;
+          !!userProfile.familyId && !!userProfile.relationship;
 
         if (!hasCompleteProfile) {
-          setReadingCount(0);
-          setStudiesCount(0);
-          setHobbiesCount(0);
-          setInternshipCount(0);
-          setFamilyReflectionCount(0);
           setLoading(false);
           return;
         }
 
         const familyId = userProfile.familyId;
 
-        const results = await Promise.allSettled([
+        const [reading, studies, hobbies, internships, reflections] =
+          await Promise.all([
             loadReadingByAuthor(authUser.uid, familyId),
             loadStudiesByAuthor(authUser.uid, familyId),
             loadHobbiesByAuthor(authUser.uid, familyId),
             loadInternshipsByAuthor(authUser.uid, familyId),
-            loadReflectionsForHome(familyId, authUser.uid, userProfile.relationship),
-  ]);
+            loadReflectionsForHome(
+              familyId,
+              authUser.uid,
+              userProfile.relationship
+            ),
+          ]);
 
-  const [readingRes, studiesRes, hobbiesRes, internshipsRes, reflectionsRes] = results;
-
-  if (readingRes.status === "fulfilled") {
-    setReadingCount(readingRes.value.length);
-  } else {
-    console.error("READING failed:", readingRes.reason);
-    setReadingCount(0);
-  }
-
-  if (studiesRes.status === "fulfilled") {
-    setStudiesCount(studiesRes.value.length);
-  } else {
-    console.error("STUDIES failed:", studiesRes.reason);
-    setStudiesCount(0);
-  }
-
-if (hobbiesRes.status === "fulfilled") {
-  setHobbiesCount(hobbiesRes.value.length);
-} else {
-  console.error("HOBBIES failed:", hobbiesRes.reason);
-  setHobbiesCount(0);
-}
-
-if (internshipsRes.status === "fulfilled") {
-  setInternshipCount(internshipsRes.value.length);
-} else {
-  console.error("INTERNSHIP failed:", internshipsRes.reason);
-  setInternshipCount(0);
-}
-
-if (reflectionsRes.status === "fulfilled") {
-  setFamilyReflectionCount(reflectionsRes.value.length);
-} else {
-  console.error("REFLECTIONS failed:", reflectionsRes.reason);
-  setFamilyReflectionCount(0);
-}
+        setReadingCount(reading.length);
+        setStudiesCount(studies.length);
+        setHobbiesCount(hobbies.length);
+        setInternshipCount(internships.length);
+        setReflectionCount(reflections.length);
       } catch (error) {
         console.error("Failed to load home dashboard:", error);
       } finally {
@@ -134,80 +104,102 @@ if (reflectionsRes.status === "fulfilled") {
       !loading &&
       (!profile || !profile.familyId || !profile.relationship)
     ) {
-      router.replace("/onboarding");
+      router.replace("/family");
     }
   }, [user, loading, profile, router]);
 
   const greeting = useMemo(() => {
     if (!user?.displayName) return "Welcome";
-    const first = user.displayName.split(" ")[0];
-    return `Welcome, ${first}`;
+    return `Welcome, ${user.displayName.split(" ")[0]}`;
   }, [user]);
+
+  const dailyMessage = useMemo(() => {
+    const messages = [
+      "Small moments, shared gently, become family memory.",
+      "A calm word at the right time can change the whole day.",
+      "Even busy nests stay connected through small signals.",
+      "Progress is quieter than noise, but it lasts longer.",
+      "Today is a good day to notice, listen, and encourage.",
+      "Families grow stronger in the ordinary moments.",
+      "A thoughtful check-in can be its own kind of gift.",
+    ];
+
+    const dayIndex = new Date().getDate() % messages.length;
+    return messages[dayIndex];
+  }, []);
+
+  const tiles: HomeTile[] = [
+
+     {
+      key: "reflection",
+      label: "Reflection",
+      href: "/reflection",
+      image: "/images/home-reflection.jpeg",
+      count: reflectionCount,
+    },
+    
+    {
+      key: "classes",
+      label: "Classes",
+      href: "/studies",
+      image: "/images/home-classes.jpeg",
+      count: studiesCount,
+    },
+
+      {
+      key: "internships",
+      label: "Internships",
+      href: "/internship",
+      image: "/images/home-internships.jpeg",
+      count: internshipCount,
+    },
+    
+    {
+      key: "reading",
+      label: "Reading",
+      href: "/reading",
+      image: "/images/home-reading.jpeg",
+      count: readingCount,
+    },
+    {
+      key: "hobbies",
+      label: "Hobbies",
+      href: "/hobbies",
+      image: "/images/home-hobbies.jpeg",
+      count: hobbiesCount,
+    },
+  
+   
+  ];
 
   if (loading) {
     return (
-      <div className="opennest-app-shell">
-        <div className="opennest-page">
-          <HeroHeader />
-          <div className="opennest-card">
-            <div className="opennest-card-subtitle">Loading your nest...</div>
-          </div>
-        </div>
+      <div className="opennest-home-shell">
+        <div className="opennest-home-loading">Loading your nest...</div>
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="opennest-app-shell">
-        <div className="opennest-page">
-          <HeroHeader />
+      <div className="opennest-home-shell">
+        <div className="opennest-home-guest">
+          <Image
+            src="/opennest-logo.png"
+            alt="OpenNest"
+            width={140}
+            height={80}
+            priority
+          />
 
-          <div className="opennest-hero-card" style={{ marginBottom: 18 }}>
-            <div className="opennest-card-title">
-              Stay close, even when life stretches the map
-            </div>
-            <div className="opennest-card-subtitle">
-              OpenNest is a shared family space for reflections, courses,
-              reading, routines, milestones, and the quiet details that help
-              people feel near each other.
-            </div>
-          </div>
+          <h1 className="opennest-home-title">OpenNest</h1>
+          <p className="opennest-home-subtitle">
+            A shared family space for reflection, rhythm, and the threads of daily life.
+          </p>
 
-          <DashboardCard title="Get started">
-            <div className="opennest-list">
-              <div className="opennest-list-card teal">
-                <div className="opennest-list-title">Enter your family space</div>
-                <div className="opennest-list-meta">
-                  Sign in, then join a family or create one.
-                </div>
-                <div style={{ marginTop: 14 }}>
-                  <Link
-                    href="/login"
-                    className="opennest-button opennest-button-primary"
-                  >
-                    Go to Login
-                  </Link>
-                </div>
-              </div>
-
-              <div className="opennest-list-card gold">
-                <div className="opennest-list-title">Explore the calendar</div>
-                <div className="opennest-list-meta">
-                  View family schedules one module at a time with designs
-                  tailored for courses, reading, internships, and reflections.
-                </div>
-                <div style={{ marginTop: 14 }}>
-                  <Link
-                    href="/calendar"
-                    className="opennest-button opennest-button-secondary"
-                  >
-                    Open Family Calendar
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </DashboardCard>
+          <Link href="/login" className="opennest-home-primary-button">
+            Go to Login
+          </Link>
         </div>
       </div>
     );
@@ -215,226 +207,69 @@ if (reflectionsRes.status === "fulfilled") {
 
   if (user && (!profile || !profile.familyId || !profile.relationship)) {
     return (
-      <div className="opennest-app-shell">
-        <div className="opennest-page">
-          <HeroHeader />
-          <div className="opennest-hero-card" style={{ marginBottom: 18 }}>
-            <div className="opennest-card-title">{greeting}</div>
-            <div className="opennest-card-subtitle">
-              Redirecting you to family setup...
-            </div>
-          </div>
-          <div className="opennest-card">
-            <div className="opennest-card-subtitle">
-              Your profile needs a family and relationship before Home can load.
-            </div>
-          </div>
+      <div className="opennest-home-shell">
+        <div className="opennest-home-guest">
+          <h1 className="opennest-home-title">{greeting}</h1>
+          <p className="opennest-home-subtitle">
+            Redirecting you to family setup...
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="opennest-app-shell">
-      <div className="opennest-page">
-        <HeroHeader />
-
-        <div className="opennest-hero-card" style={{ marginBottom: 18 }}>
-          <div className="opennest-card-title">{greeting}</div>
-          <div className="opennest-card-subtitle">
-            A shared place for family rhythm — courses, reading, reflections,
-            routines, milestones, and the small signals that make better
-            conversations possible.
+    <div className="opennest-home-shell">
+      <div className="opennest-home-container">
+        <div className="opennest-home-topbar">
+          <div>
+            <div className="opennest-home-title">{greeting}</div>
+            <div className="opennest-home-family">
+              {profile?.familyName || profile?.familyId || "Your Family"}
+            </div>
           </div>
+
+          <button
+            type="button"
+            onClick={logOut}
+            className="opennest-home-secondary-button"
+          >
+            Log out
+          </button>
         </div>
 
-        <div className="opennest-summary-grid">
-          <SummaryCard label="Family Reflections" value={familyReflectionCount} />
-          <SummaryCard label="My Courses" value={studiesCount} />
-          <SummaryCard label="My Reading" value={readingCount} />
-          <SummaryCard label="My Hobbies" value={hobbiesCount} />
+        <div className="opennest-home-message-card">
+          <div className="opennest-home-message-label">Daily family message</div>
+          <div className="opennest-home-message-text">{dailyMessage}</div>
         </div>
 
-        <div className="opennest-module-grid">
-          <div className="opennest-section">
-            <DashboardCard title="Continue">
-              <div className="opennest-list">
-                <div className="opennest-list-card teal">
-                  <div className="opennest-list-title">Family Calendar</div>
-                  <div className="opennest-list-meta">
-                    Open one module at a time and view it across family members.
-                  </div>
-                  <div style={{ marginTop: 12 }}>
-                    <Link href="/calendar" className="underline text-sm">
-                      Open Calendar
-                    </Link>
-                  </div>
-                </div>
-
-                <div className="opennest-list-card gold">
-                  <div className="opennest-list-title">View and Reflect</div>
-                  <div className="opennest-list-meta">
-                    See recent family reflections and emotional signals.
-                  </div>
-                  <div
-                    style={{
-                      marginTop: 12,
-                      display: "flex",
-                      gap: 8,
-                      flexDirection: "column",
-                    }}
-                  >
-                    <Link href="/feed" className="underline text-sm">
-                      Open-Nest Family Feed
-                    </Link>
-                    <Link href="/reflection" className="underline text-sm">
-                      Write Reflection
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            </DashboardCard>
-
-            <DashboardCard title="Your modules">
-              <div className="opennest-list">
-                <div className="opennest-list-card opennest-module-accent-studies">
-                  <div className="opennest-list-title">Courses</div>
-                  <div className="opennest-list-meta">
-                    Courses registered: {studiesCount}
-                  </div>
-                  <div style={{ marginTop: 12 }}>
-                    <Link href="/studies" className="underline text-sm">
-                      Open Courses
-                    </Link>
-                  </div>
-                </div>
-
-                <div className="opennest-list-card opennest-module-accent-reading">
-                  <div className="opennest-list-title">Reading</div>
-                  <div className="opennest-list-meta">
-                    Reading entries: {readingCount}
-                  </div>
-                  <div style={{ marginTop: 12 }}>
-                    <Link href="/reading" className="underline text-sm">
-                      Open Reading
-                    </Link>
-                  </div>
-                </div>
-
-                <div className="opennest-list-card opennest-module-accent-hobbies">
-                  <div className="opennest-list-title">Hobbies</div>
-                  <div className="opennest-list-meta">
-                    Hobbies tracked: {hobbiesCount}
-                  </div>
-                  <div style={{ marginTop: 12 }}>
-                    <Link href="/hobbies" className="underline text-sm">
-                      Open Hobbies
-                    </Link>
-                  </div>
-                </div>
-
-                <div className="opennest-list-card opennest-module-accent-internship">
-                  <div className="opennest-list-title">Internship</div>
-                  <div className="opennest-list-meta">
-                    Internship items: {internshipCount}
-                  </div>
-                  <div style={{ marginTop: 12 }}>
-                    <Link href="/internship" className="underline text-sm">
-                      Open Internship
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            </DashboardCard>
-          </div>
-
-          <div className="opennest-section">
-            <DashboardCard title="Your family profile">
-              <div className="opennest-meta-grid">
-                <div>
-                  <strong>Name:</strong> {user.displayName || "-"}
-                </div>
-                <div>
-                  <strong>Relationship:</strong> {profile?.relationship || "-"}
-                </div>
-                <div>
-                  <strong>Family:</strong>{" "}
-                  {profile?.familyName
-                    ? profile.familyName
-                    : profile?.familyId
-                    ? `${profile.familyId}`
-                    : "-"}
-                </div>
+        <div className="opennest-home-grid">
+          {tiles.map((tile) => (
+            <Link
+              key={tile.key}
+              href={tile.href}
+              className="opennest-home-tile"
+            >
+              <div className="opennest-home-image-wrap">
+                <Image
+                  src={tile.image}
+                  alt={tile.label}
+                  fill
+                  sizes="(max-width: 768px) 55vw, 33vw"
+                  className="opennest-home-image"
+                />
               </div>
 
-              <div
-                style={{
-                  marginTop: 16,
-                  display: "flex",
-                  gap: 10,
-                  flexWrap: "wrap",
-                }}
-              >
-                <Link
-                  href="/onboarding"
-                  className="opennest-button opennest-button-secondary"
-                >
-                  Family Settings
-                </Link>
-                <button
-                  type="button"
-                  onClick={logOut}
-                  className="opennest-button opennest-button-secondary"
-                >
-                  Log out
-                </button>
+              <div className="opennest-home-tile-footer">
+                <div className="opennest-home-tile-title">{tile.label}</div>
+                <div className="opennest-home-count">{tile.count}</div>
               </div>
-            </DashboardCard>
-          </div>
+            </Link>
+          ))}
         </div>
       </div>
 
       <BottomNav />
-    </div>
-  );
-}
-
-function HeroHeader() {
-  return (
-    <div
-      style={{
-        display: "grid",
-        justifyItems: "center",
-        textAlign: "center",
-        marginBottom: 22,
-        paddingTop: 8,
-        background: "linear-gradient(180deg, #F6F5F0 0%, #EFEEE9 100%)",
-      }}
-    >
-      <Image
-        src="/opennest-logo.png"
-        alt="OpenNest"
-        width={80}
-        height={50}
-        priority
-        style={{
-          objectFit: "contain",
-          marginBottom: 12,
-        }}
-      />
-
-      <div
-        style={{
-          fontSize: 15,
-          lineHeight: 1.5,
-          justifyItems: "center",
-          color: "var(--on-text-soft)",
-          maxWidth: 540,
-        }}
-      >
-        A shared family space for reflection, rhythm, and the threads of daily
-        life.
-      </div>
     </div>
   );
 }

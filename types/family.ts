@@ -1,7 +1,6 @@
-export interface FamilyGroup {
-  id?: string;
-  name: string;
-  inviteCode: string;
-  members: string[];
-  createdAt: number;
-}
+export type FamilyCalendarFilterInput = {
+  familyId: string;
+  viewerUid: string;
+  viewerRelationship?: string;
+  selectedUserUid: string | "all";
+};

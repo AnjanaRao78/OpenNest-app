@@ -1,5 +1,219 @@
 @import "tailwindcss";
 
+.opennest-home-shell {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #f7f5ef 0%, #f2efe6 100%);
+  color: var(--on-text, #294c52);
+  padding: 16px 16px 88px;
+  overflow: hidden;
+}
+
+.opennest-home-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  height: calc(100vh - 104px);
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  gap: 16px;
+}
+
+.opennest-home-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.opennest-home-title {
+  font-size: 1.9rem;
+  font-weight: 700;
+  line-height: 1.05;
+}
+
+.opennest-home-family {
+  font-size: 0.95rem;
+  opacity: 0.85;
+  margin-top: 4px;
+}
+
+.opennest-home-message-card {
+  border: 1px solid rgba(53, 108, 112, 0.16);
+  background: rgba(255, 255, 255, 0.78);
+  border-radius: 24px;
+  padding: 16px 18px;
+  box-shadow: 0 10px 24px rgba(78, 90, 80, 0.07);
+}
+
+.opennest-home-message-label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.7;
+  margin-bottom: 6px;
+}
+
+.opennest-home-message-text {
+  font-size: 1rem;
+  line-height: 1.45;
+}
+
+.opennest-home-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  min-height: 0;
+}
+
+.opennest-home-tile {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  min-height: 0;
+  border-radius: 24px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.76);
+  border: 1px solid rgba(53, 108, 112, 0.14);
+  box-shadow: 0 10px 24px rgba(78, 90, 80, 0.07);
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.opennest-home-tile:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px rgba(78, 90, 80, 0.12);
+}
+
+.opennest-home-image-wrap {
+  position: relative;
+  width: 100%;
+  height : 100%;
+  min-height: 120px;
+  aspect-ratio: 1 / 1;
+  background: #f5f0e4;
+  padding : 10 px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.opennest-home-image {
+  object-fit: contain;
+  padding: 8px;
+}
+
+.opennest-home-tile-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  gap: 12px;
+}
+
+.opennest-home-tile-title {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.opennest-home-count {
+  min-width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: #d89e2f;
+  color: white;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.opennest-home-primary-button,
+.opennest-home-secondary-button {
+  border: none;
+  border-radius: 999px;
+  padding: 10px 16px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.opennest-home-primary-button {
+  background: #2f7c82;
+  color: white;
+}
+
+.opennest-home-secondary-button {
+  background: white;
+  color: #2f7c82;
+  border: 1px solid rgba(47, 124, 130, 0.22);
+}
+
+.opennest-home-guest {
+  min-height: calc(100vh - 104px);
+  display: grid;
+  place-content: center;
+  text-align: center;
+  gap: 14px;
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.opennest-home-subtitle {
+  font-size: 1rem;
+  line-height: 1.5;
+  opacity: 0.82;
+}
+
+.opennest-home-loading {
+  min-height: calc(100vh - 104px);
+  display: grid;
+  place-items: center;
+  font-size: 1rem;
+}
+
+@media (max-width: 900px) {
+  .opennest-home-container {
+    height: auto;
+  }
+
+  .opennest-home-grid {
+    display : grid;
+    grid-template-columns: repeat(3, minmax(0,1fr));
+    gap: 12px;
+    min-height: 0;
+  }
+
+  .opennest-home-shell {
+    overflow: auto;
+  }
+}
+
+@media (max-width: 560px) {
+  .opennest-home-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .opennest-home-title {
+    max-height: 320 px;
+    font-size: 1.5rem;
+  }
+
+  .opennest-home-tile-title {
+    font-size: 0.92rem;
+  }
+
+  .opennest-home-count {
+    min-width: 30px;
+    height: 30px;
+    font-size: 0.85rem;
+  }
+
+  .opennest-home-topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;

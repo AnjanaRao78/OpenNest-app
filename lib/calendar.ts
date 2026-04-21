@@ -1,5 +1,6 @@
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { requireDb } from "@/lib/firestoreClient";
+
 import {
   CalendarFilterInput,
   CalendarItem,

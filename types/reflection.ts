@@ -1,8 +1,8 @@
 export type VisibilityScope =
-  | "everyone"
-  | "parentsOnly"
-  | "siblingOnly"
-  | "onlyMe";
+| "everyone"
+| "parentsOnly"
+| "siblingOnly"
+| "onlyMe";
 
 export interface ReflectionPost {
   id?: string;

@@ -47,23 +47,21 @@ service cloud.firestore {
       return value in ["everyone", "parentsOnly", "siblingOnly", "onlyMe"];
     }
 
-    match /users/{uid} {
-      allow read: if isOwner(uid);
-
-      allow create: if isOwner(uid)
-        && request.resource.data.familyId is string
-        && validRelationship(request.resource.data.relationship);
-
-      allow update: if isOwner(uid)
-        && request.resource.data.familyId is string
-        && validRelationship(request.resource.data.relationship)
-        && (
-          request.resource.data.familyId == resource.data.familyId
-          || !(resource.data.familyId is string)
-        );
-
-      allow delete: if false;
-    }
+match /users/{uid} {
+    allow read: if isOwner(uid)
+      || (
+        signedIn()
+    && hasFamily()
+    && resource.data.familyId == currentUser().familyId
+      );
+    allow create: if isOwner(uid)
+    && request.resource.data.familyId is string
+    && validRelationship(request.resource.data.relationship);
+    allow update: if isOwner(uid)
+    && request.resource.data.familyId == resource.data.familyId
+    && validRelationship(request.resource.data.relationship);
+    allow delete: if false;
+}
 
     match /familyInvites/{inviteId} {
       allow read: if signedIn()

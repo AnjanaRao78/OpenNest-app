@@ -2,27 +2,26 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { User } from "firebase/auth";
 import { getUserProfile, subscribeToAuth } from "@/lib/auth";
-import { loadCalendarItems, loadFamilyUsers } from "@/lib/calendar";
 import {
-  CalendarItem,
-  CalendarModuleType,
-  CalendarViewType,
-} from "@/types/calendar";
-import CalendarFilters from "@/components/CalendarFilters";
-import BlackboardCalendar from "@/components/BlackboardCalendar";
-import AgendaView from "@/components/AgendaView";
-import ScheduleView from "@/components/ScheduleView";
-import { UserProfile } from "@/types/userProfile";
+  loadFamilyInternshipItems,
+  loadFamilyReadingItems,
+  loadFamilyReflectionMonthItems,
+  loadFamilyStudiesCalendar,
+  loadFamilyUsers,
+} from "@/lib/familyCalendar";
+import {
+  FamilyCalendarModule,
+  FamilyCalendarUserOption,
+} from "@/types/familyCalendar";
 
-const defaultModules: CalendarModuleType[] = [
-  "reflection",
-  "studies",
-  "internship",
-  "reading",
-];
+import ReadingFamilyCalendar from "@/components/calendar/ReadingFamilyCalendar";
+import FamilyCalendarFilters from "@/components/FamilyCalendarFilters";
+import StudiesFamilyCalendar from "@/components/calendar/StudiesFamilyCalendar";
+import InternshipFamilyCalendar from "@/components/calendar/InternshipFamilyCalendar";
+import ReflectionFamilyCalendar from "@/components/calendar/ReflectionFamilyCalendar";
 
 function getMonthRange(offset: number) {
   const today = new Date();
@@ -41,19 +40,47 @@ function getMonthRange(offset: number) {
   return { year, month, startDate, endDate };
 }
 
+const allowedModules: FamilyCalendarModule[] = [
+  "studies",
+  "reading",
+  "internship",
+  "reflection",
+];
+
+type ReadingItem = {
+  id: string;
+  authorUid?: string;
+  authorName?: string;
+  title?: string;
+  status?: string;
+  startDate?: string;
+  endDate?: string;
+  createdAt?: number;
+};
+
 export default function CalendarClient() {
   const searchParams = useSearchParams();
+  const router = useRouter();
 
   const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [items, setItems] = useState<CalendarItem[]>([]);
-  const [familyUsers, setFamilyUsers] = useState<any[]>([]);
+  const [profile, setProfile] = useState<any>(null);
+  const [familyUsers, setFamilyUsers] = useState<FamilyCalendarUserOption[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [selectedUserUid, setSelectedUserUid] = useState<string | "all">("all");
-  const [selectedModules, setSelectedModules] =
-    useState<CalendarModuleType[]>(defaultModules);
-  const [selectedView, setSelectedView] = useState<CalendarViewType>("month");
+  const [studiesItems, setStudiesItems] = useState<any[]>([]);
+  const [readingItems, setReadingItems] = useState<ReadingItem[]>([]);
+  const [internshipItems, setInternshipItems] = useState<any[]>([]);
+  const [reflectionItems, setReflectionItems] = useState<any[]>([]);
+
+  const moduleParam = searchParams.get("module") as FamilyCalendarModule | null;
+  const selectedModule: FamilyCalendarModule = allowedModules.includes(
+    moduleParam as FamilyCalendarModule
+  )
+    ? (moduleParam as FamilyCalendarModule)
+    : "studies";
+
+  const selectedUserUidParam = searchParams.get("user");
+  const selectedUserUid = selectedUserUidParam || "all";
 
   const requestedOffset = Number(searchParams.get("offset"));
   const offset =
@@ -63,14 +90,18 @@ export default function CalendarClient() {
 
   const monthRange = useMemo(() => getMonthRange(offset), [offset]);
 
-  function toggleModule(module: CalendarModuleType) {
-    setSelectedModules((prev) => {
-      if (prev.includes(module)) {
-        const next = prev.filter((m) => m !== module);
-        return next.length > 0 ? next : prev;
-      }
-      return [...prev, module];
-    });
+  function updateQuery(next: {
+    module?: FamilyCalendarModule;
+    user?: string | "all";
+    offset?: number;
+  }) {
+    const nextModule = next.module ?? selectedModule;
+    const user = next.user ?? selectedUserUid;
+    const nextOffset = next.offset ?? offset;
+
+    router.push(
+      `/calendar?module=${nextModule}&user=${user}&offset=${nextOffset}`
+    );
   }
 
   useEffect(() => {
@@ -80,25 +111,24 @@ export default function CalendarClient() {
       if (!authUser) {
         setProfile(null);
         setFamilyUsers([]);
-        setItems([]);
         setLoading(false);
         return;
       }
 
-        try {
-        const userProfile = (await getUserProfile(authUser.uid));
+      try {
+        const userProfile = await getUserProfile(authUser.uid);
         setProfile(userProfile);
 
-        if (!userProfile || !userProfile.familyId) {
+        if (!userProfile) {
           setFamilyUsers([]);
-          setItems([]);
           setLoading(false);
           return;
         }
+
         const users = await loadFamilyUsers(userProfile.familyId);
         setFamilyUsers(users);
       } catch (error) {
-        console.error("Calendar init failed:", error);
+        console.error("Family calendar init failed:", error);
       } finally {
         setLoading(false);
       }
@@ -114,20 +144,37 @@ export default function CalendarClient() {
       setLoading(true);
 
       try {
-        const data = await loadCalendarItems({
+        const filters = {
+          module: selectedModule,
           familyId: profile.familyId,
           viewerUid: user.uid,
           viewerRelationship: profile.relationship,
-          selectedUserUid,
-          selectedModules,
+          selectedUserUid: selectedUserUid as string | "all",
           startDate: monthRange.startDate,
           endDate: monthRange.endDate,
-        });
+        } as const;
 
-        setItems(data);
+        if (selectedModule === "studies") {
+          const data = await loadFamilyStudiesCalendar(filters);
+          setStudiesItems(data);
+        }
+
+        if (selectedModule === "reading") {
+          const data = await loadFamilyReadingItems(filters);
+          setReadingItems(data);
+        }
+
+        if (selectedModule === "internship") {
+          const data = await loadFamilyInternshipItems(filters);
+          setInternshipItems(data);
+        }
+
+        if (selectedModule === "reflection") {
+          const data = await loadFamilyReflectionMonthItems(filters);
+          setReflectionItems(data);
+        }
       } catch (error) {
-        console.error("Calendar load failed:", error);
-        setItems([]);
+        console.error("Family calendar module load failed:", error);
       } finally {
         setLoading(false);
       }
@@ -137,8 +184,8 @@ export default function CalendarClient() {
   }, [
     user,
     profile,
+    selectedModule,
     selectedUserUid,
-    selectedModules,
     monthRange.startDate,
     monthRange.endDate,
   ]);
@@ -147,53 +194,117 @@ export default function CalendarClient() {
   if (!user || !profile) return <div className="p-6">Please sign in first.</div>;
 
   return (
-    <div>
-      <div className="max-w-screen-sm mx-auto px-3 pt-3 flex items-center justify-between text-sm">
-        <Link href="/" className="underline">
-          Home
-        </Link>
+    <div className="opennest-app-shell">
+      <div className="opennest-page">
+        <div className="opennest-topbar">
+          <div className="opennest-topbar-title">Family Calendar</div>
 
-        <div className="flex items-center gap-4">
+          <div className="opennest-topbar-links">
+            <Link href="/">Home</Link>
+            <Link href="/feed">Feed</Link>
+          </div>
+        </div>
+c
+        <FamilyCalendarFilters
+          selectedModule={selectedModule}
+          onModuleChange={(value) => updateQuery({ module: value, offset: 0 })}
+          userOptions={familyUsers}
+          selectedUserUid={selectedUserUid as string | "all"}
+          onUserChange={(value) => updateQuery({ user: value })}
+          currentOffset={offset}
+        />
+
+        <div className="max-w-screen-sm mx-auto px-3 pb-3 flex items-center justify-between text-sm">
           {offset > 0 ? (
-            <Link href={`/calendar?offset=${offset - 1}`} className="underline">
+            <button
+              type="button"
+              onClick={() => updateQuery({ offset: offset - 1 })}
+              className="underline"
+            >
               Previous
-            </Link>
+            </button>
           ) : (
             <span className="text-gray-400">Previous</span>
           )}
 
           {offset < 4 ? (
-            <Link href={`/calendar?offset=${offset + 1}`} className="underline">
+            <button
+              type="button"
+              onClick={() => updateQuery({ offset: offset + 1 })}
+              className="underline"
+            >
               Next
-            </Link>
+            </button>
           ) : (
             <span className="text-gray-400">Next</span>
           )}
         </div>
+
+        {selectedModule === "studies" && (
+          <StudiesFamilyCalendar
+            items={studiesItems}
+            year={monthRange.year}
+            month={monthRange.month}
+          />
+        )}
+  
+       {selectedModule === "reading" && (
+        <ReadingFamilyCalendar
+          items={readingItems.map((item: any) => ({
+            id: item.id,
+            authorUid: item.authorUid || "",
+            authorName: item.authorName || "Unknown",
+            title: item.title || "Reading",
+            status: item.status || "",
+            startDate: item.startDate || "",
+            endDate: item.endDate || "",
+            createdAt: item.createdAt || 0,
+            href: `/entry/reading/${item.id}`,
+          }))}
+            year={monthRange.year}
+            month={monthRange.month}
+          />
+        )}
+
+        {selectedModule === "internship" && (
+          <InternshipFamilyCalendar
+            items={internshipItems.map((item: any) => ({
+              id: item.id,
+              authorUid: item.authorUid || "",
+              authorName: item.authorName || "Unknown",
+              company: item.company || "Internship",
+              status: item.status || "",
+              milestone: item.milestone || "",
+              blocker: item.blocker || "",
+              startDate: item.startDate || "",
+              endDate: item.endDate || "",
+              href: `/entry/internship/${item.id}`,
+      }))}
+            year={monthRange.year}
+            month={monthRange.month}
+          />
+        )}
+
+       {selectedModule === "reflection" && (
+          <ReflectionFamilyCalendar
+            items={reflectionItems.map((item: any) => ({
+              id: item.id,
+              authorUid: item.authorUid || "",
+              authorName: item.authorName || "Unknown",
+              authorRelationship: item.authorRelationship || "",
+              highlight: item.highlight || "",
+              challenge: item.challenge || "",
+              mood: item.mood || "",
+              needType: item.needType || "",
+              visibility: item.visibility || "",
+              createdAt: item.createdAt || 0,
+              href: `/entry/reflection/${item.id}`,
+            }))}
+            year={monthRange.year}
+            month={monthRange.month}
+          />
+        )}
       </div>
-
-      <CalendarFilters
-        userOptions={familyUsers}
-        selectedUserUid={selectedUserUid}
-        onUserChange={setSelectedUserUid}
-        selectedModules={selectedModules}
-        onToggleModule={toggleModule}
-        selectedView={selectedView}
-        onViewChange={setSelectedView}
-        currentOffset={offset}
-      />
-
-      {selectedView === "month" && (
-        <BlackboardCalendar
-          year={monthRange.year}
-          month={monthRange.month}
-          items={items}
-        />
-      )}
-
-      {selectedView === "agenda" && <AgendaView items={items} />}
-
-      {selectedView === "schedule" && <ScheduleView items={items} />}
     </div>
   );
 }

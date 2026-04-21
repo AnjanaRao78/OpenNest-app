@@ -8,12 +8,9 @@ export default function PageNav() {
 
   const links = [
     { href: "/", label: "Home" },
-    { href: "/calendar", label: "Calendar" },
     { href: "/feed", label: "Feed" },
-    { href: "/studies", label: "Studies" },
-    { href: "/reading", label: "Reading" },
-    { href: "/hobbies", label: "Hobbies" },
-    { href: "/internship", label: "Internship" },
+    { href: "/calendar", label: "Calendar" },
+    
   ];
 
   return (
