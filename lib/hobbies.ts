@@ -12,30 +12,6 @@ import {
 import { requireDb } from "@/lib/firestoreClient";
 import { HobbyEntry } from "@/types/hobbies";
 
-export async function saveHobbyEntry(entry: HobbyEntry) {
-  const firestore = requireDb();
-  const docRef = await addDoc(collection(firestore, "hobbies"), entry);
-  return docRef.id;
-}
-
-export async function loadHobbiesByAuthor(uid: string, familyId: string) {
-  const firestore = requireDb();
-
-  const q = query(
-    collection(firestore, "hobbies"),
-    where("authorUid", "==", uid),
-    where("familyId", "==", familyId)
-  );
-
-  const snap = await getDocs(q);
-
-  return snap.docs.map((doc) => ({
-    id: doc.id,
-    ...doc.data(),
-  }));
-}
-
-
 export async function loadHobbiesByFamily(familyId: string) {
   const firestore = requireDb();
   const q = query(
@@ -72,4 +48,39 @@ export async function updateHobbyById(
   const firestore = requireDb();
   const ref = doc(firestore, "hobbies", id);
   await updateDoc(ref, updates);
+}
+
+
+export async function loadHobbiesByAuthor(uid: string, familyId: string) {
+  const firestore = requireDb();
+
+  const q = query(
+    collection(firestore, "hobbies"),
+    where("authorUid", "==", uid),
+    where("familyId", "==", familyId)
+  );
+
+  const snap = await getDocs(q);
+
+  return snap.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  }));
+}
+
+export async function saveHobbyEntry(entry: {
+  familyId: string;
+  authorUid: string;
+  authorName: string;
+  title: string;
+  hobbyName?: string;
+  category?: string;
+  skillLevel?: string;
+  frequency?: string;
+  notes?: string;
+  createdAt: number;
+}) {
+  const firestore = requireDb();
+
+  await addDoc(collection(firestore, "hobbies"), entry);
 }
