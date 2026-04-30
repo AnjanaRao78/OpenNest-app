@@ -4,24 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { User } from "firebase/auth";
 import { subscribeToAuth, getUserProfile } from "@/lib/auth";
-import { loadHobbiesByAuthor } from "@/lib/hobbies";
+import { loadHobbiesByAuthor, type HobbyEntry } from "@/lib/hobbies";
 import PageHeader from "@/components/PageHeader";
 import SummaryCard from "@/components/SummaryCard";
 import DashboardCard from "@/components/DashboardCard";
 import BottomNav from "@/components/BottomNav";
-type HobbyEntry = {
- id: string;
- title?: string;
- hobbyName?: string;
- category?: string;
- skillLevel?: string;
- frequency?: string;
- notes?: string;
- createdAt?: number;
- authorUid?: string;
- authorName?: string;
- familyId?: string;
-};
+
 export default function HobbiesPage() {
  const [user, setUser] = useState<User | null>(null);
  const [profile, setProfile] = useState<any>(null);
@@ -227,6 +215,18 @@ export default function HobbiesPage() {
 </Link>
 </div>
 </div>
+<div className="opennest-list-card">
+  <div className="opennest-list-title">Family hobby calendar</div>
+  <div className="opennest-list-meta">
+    See hobbies across the month for the whole family.
+  </div>
+  <div style={{ marginTop: 12 }}>
+    <Link href="/hobbies/calendar" className="underline text-sm">
+      Open Hobby Calendar
+    </Link>
+  </div>
+</div>
+
 </div>
              {message && (
 <div style={{ marginTop: 12 }} className="opennest-list-meta">

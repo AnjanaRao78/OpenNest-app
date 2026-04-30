@@ -16,6 +16,8 @@ type UserProfile = {
   relationship: "parent" | "sibling" | "child";
 };
 
+type HobbyStatus = "planned" | "started" | "in-progress" | "completed";
+
 export default function NewHobbyPage() {
   const router = useRouter();
 
@@ -29,6 +31,10 @@ export default function NewHobbyPage() {
   const [category, setCategory] = useState("");
   const [skillLevel, setSkillLevel] = useState("");
   const [frequency, setFrequency] = useState("");
+  const [status, setStatus] = useState<HobbyStatus>("planned");
+  const [startDate, setStartDate] = useState("");
+  const [targetEndDate, setTargetEndDate] = useState("");
+  const [progress, setProgress] = useState(0);
   const [notes, setNotes] = useState("");
 
   useEffect(() => {
@@ -71,6 +77,16 @@ export default function NewHobbyPage() {
       return;
     }
 
+    if (!startDate) {
+      setMessage("Please choose a start date.");
+      return;
+    }
+
+    if (targetEndDate && targetEndDate < startDate) {
+      setMessage("Target end date cannot be earlier than start date.");
+      return;
+    }
+
     try {
       setSaving(true);
       setMessage("");
@@ -85,10 +101,14 @@ export default function NewHobbyPage() {
         skillLevel: skillLevel.trim(),
         frequency: frequency.trim(),
         notes: notes.trim(),
+        status,
+        startDate,
+        targetEndDate,
+        progress,
         createdAt: Date.now(),
       });
 
-      router.replace("/hobbies");
+      router.replace("/hobbies/calendar");
     } catch (error) {
       console.error("Failed to save hobby:", error);
       setMessage("Failed to save hobby.");
@@ -151,7 +171,7 @@ export default function NewHobbyPage() {
         <div className="opennest-hero-card" style={{ marginBottom: 18 }}>
           <div className="opennest-card-title">Add a hobby</div>
           <div className="opennest-card-subtitle">
-            Capture an interest, routine, or creative pursuit.
+            Capture an interest, routine, or creative pursuit and place it on the family calendar.
           </div>
         </div>
 
@@ -180,6 +200,52 @@ export default function NewHobbyPage() {
               value={frequency}
               onChange={(e) => setFrequency(e.target.value)}
             />
+
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value as HobbyStatus)}
+            >
+              <option value="planned">Planned</option>
+              <option value="started">Started</option>
+              <option value="in-progress">In Progress</option>
+              <option value="completed">Completed</option>
+            </select>
+
+            <div className="opennest-form-row-2">
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+
+              <input
+                type="date"
+                value={targetEndDate}
+                onChange={(e) => setTargetEndDate(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <div
+                style={{
+                  fontSize: 13,
+                  color: "var(--on-text-soft)",
+                  marginBottom: 8,
+                }}
+              >
+                Progress: {progress}%
+              </div>
+
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={5}
+                value={progress}
+                onChange={(e) => setProgress(Number(e.target.value))}
+                style={{ width: "100%" }}
+              />
+            </div>
 
             <textarea
               placeholder="Notes"
